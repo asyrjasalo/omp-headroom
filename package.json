@@ -41,7 +41,6 @@
   },
   "scripts": {
     "build:pi": "bun scripts/build-pi-entry.ts",
-    "postinstall": "bun install --production && bun run build:pi",
     "check": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",

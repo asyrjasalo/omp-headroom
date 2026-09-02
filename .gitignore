@@ -33,6 +33,4 @@ Thumbs.db
 .backup/
 omp-headroom-*.tgz
 
-# Pi extension bundle (rebuilt by postinstall hook)
-dist-pi/
-.pi/extensions/omp-headroom.js
+
