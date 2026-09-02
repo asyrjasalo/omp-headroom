@@ -6657,6 +6657,9 @@ function readHost(pi) {
   return pi?.[HEADROOM_HOST] ?? "omp";
 }
 
+// src/host-stamp.ts
+globalThis[HEADROOM_HOST] = "pi";
+
 // src/index.ts
 import { spawn } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
@@ -6689,7 +6692,10 @@ var RETRIEVE_TOOL = "headroom_retrieve";
 var COMPRESS_TOOL = "headroom_compress";
 var STATS_TOOL = "headroom_stats";
 var DEFAULT_PROXY_URL = "http://127.0.0.1:8787";
-var HEADROOM_CONFIG_PATH = join(homedir(), ".omp", "agent", "headroom.yml");
+var OMP_CONFIG_PATH = join(homedir(), ".omp", "agent", "headroom.yml");
+var PI_CONFIG_PATH = join(homedir(), ".pi", "agent", "headroom.yml");
+var _piTag = globalThis[Symbol.for("headroom.host")];
+var HEADROOM_CONFIG_PATH = _piTag === "pi" ? PI_CONFIG_PATH : OMP_CONFIG_PATH;
 var PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 var SYSTEMD_TEMPLATE_PATH = join(PACKAGE_ROOT, "systemd", "headroom-proxy.service.in");
 function loadHeadroomConfig(path = HEADROOM_CONFIG_PATH) {
