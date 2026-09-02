@@ -31,6 +31,10 @@
 - The existing 94-test suite passes unchanged against the refactored factory.
 - End-to-end compression in Pi additionally requires routing the LLM provider through the Headroom proxy (analogous to OMP's `headroom wrap omp`). That's a separate custom-provider extension, not part of this package.
 
+### Added
+
+- **Host-isolated config paths.** OMP loads only `~/.omp/agent/headroom.yml`; Pi loads only `~/.pi/agent/headroom.yml`. Neither falls back to the other's file. New `src/host-stamp.ts` (imported first by `src/pi-entry.ts`) sets `globalThis[HEADROOM_HOST] = "pi"` during module load; `src/config.ts` reads that tag and resolves `HEADROOM_CONFIG_PATH` accordingly. OMP never imports the stamp, so its tag stays unset and it picks the OMP path. `/headroom config get|set|unset` and `saveHeadroomConfigKey` write back to whichever path resolved at startup, so per-key edits stay within the active host's file. `OMP_HEADROOM_*` env vars work for both hosts.
+
 ## 0.1.4 — 2026-07-27
 
 ### Added
