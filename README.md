@@ -223,7 +223,18 @@ Automatic compression and provider archiving never rewrite visible transcript me
 
 ## Configuration
 
-Configuration can live in `~/.omp/agent/headroom.yml` or in `OMP_HEADROOM_*` environment variables. Environment variables always win; unknown YAML keys are ignored, and a malformed or absent YAML file falls back to environment/default values.
+Configuration can live in a host-specific YAML file or in `OMP_HEADROOM_*` environment variables. Environment variables always win; unknown YAML keys are ignored, and a malformed or absent YAML file falls back to environment/default values.
+
+**Host isolation.** OMP and Pi use separate config files and never read each other's:
+
+| Host | Config file                       |
+| ---- | --------------------------------- |
+| OMP  | `~/.omp/agent/headroom.yml`       |
+| Pi   | `~/.pi/agent/headroom.yml`        |
+
+The active host is detected at module-load time: `src/pi-entry.ts` stamps a global tag via `src/host-stamp.ts`, and `src/config.ts` selects the matching path. Pi never falls back to the OMP file, and OMP never reads the Pi file — even if only the other host's file exists. `OMP_HEADROOM_*` env vars work for both hosts.
+
+**Per-key writes.** The `/headroom config get|set|unset` commands and `saveHeadroomConfigKey` write back to the path resolved at startup, so a Pi session edits only `~/.pi/agent/headroom.yml` and an OMP session edits only `~/.omp/agent/headroom.yml`.
 
 
 | Variable                                           | Default                                   | Purpose                                                                                                     |
@@ -267,6 +278,9 @@ Three rules, in this order:
 
 ```text
 src/index.ts                 OMP plugin entrypoint and coordinator
+src/pi-entry.ts              Pi extension entrypoint
+src/host.ts                  host tag plumbing (omp | pi)
+src/host-stamp.ts            stamps "pi" on globalThis during Pi module load
 src/config.ts                configuration and environment overrides
 src/proxy.ts                 proxy URL and readiness primitives
 src/compression.ts           strict token/fidelity acceptance gate

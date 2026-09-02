@@ -15,9 +15,14 @@ export const STATS_TOOL = "headroom_stats";
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8787";
 const OMP_CONFIG_PATH = join(homedir(), ".omp", "agent", "headroom.yml");
 const PI_CONFIG_PATH = join(homedir(), ".pi", "agent", "headroom.yml");
-// ~/.pi/agent/headroom.yml wins when present so pi users can keep their
-// config separate from OMP; otherwise fall back to the legacy OMP location.
-export const HEADROOM_CONFIG_PATH = existsSync(PI_CONFIG_PATH) ? PI_CONFIG_PATH : OMP_CONFIG_PATH;
+// Strict host isolation: OMP loads only ~/.omp/agent/headroom.yml, Pi loads
+// only ~/.pi/agent/headroom.yml. The pi-entry stamps globalThis[HEADROOM_HOST]
+// = "pi" during its module load; OMP never does, so it stays unset → "omp".
+const _piTag = (globalThis as unknown as Record<symbol, string | undefined>)[
+  // ponytail: inline symbol lookup; if another host appears, branch here.
+  Symbol.for("headroom.host")
+];
+export const HEADROOM_CONFIG_PATH = _piTag === "pi" ? PI_CONFIG_PATH : OMP_CONFIG_PATH;
 export const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 export const SYSTEMD_TEMPLATE_PATH = join(PACKAGE_ROOT, "systemd", "headroom-proxy.service.in");
 

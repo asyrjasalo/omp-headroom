@@ -15,6 +15,7 @@
 
 import type { ExtensionAPI as PiExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { HEADROOM_HOST } from "./host.ts";
+import "./host-stamp.ts";
 import headroomExtension from "./index.ts";
 
 export default function (pi: PiExtensionAPI) {
