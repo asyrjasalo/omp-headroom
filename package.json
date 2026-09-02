@@ -22,7 +22,7 @@
   ],
   "files": [
     "src",
-    "dist-pi",
+    "scripts",
     "systemd",
     "README.md",
     ".github/CHANGELOG.md",
@@ -41,6 +41,7 @@
   },
   "scripts": {
     "build:pi": "bun scripts/build-pi-entry.ts",
+    "postinstall": "bun run build:pi",
     "check": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
