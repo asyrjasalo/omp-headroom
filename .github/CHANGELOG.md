@@ -10,18 +10,21 @@
 
 - **Pi `/headroom compact` fidelity handler.** Registers `session_before_compact`, archives the discarded source to CCR, and for `/headroom compact` (gated on `headroomCompactActive`) cancels Pi's default compaction and re-triggers it via `ctx.compact({customInstructions})` with the same Headroom fidelity prompt OMP appends to its `session.compacting` `context` field. Same archival + fidelity outcome, different event shape.
 
-- **Pi widget via `setFooter` Component factory.** The 5-row savings box renders persistently in Pi's footer slot, sharing `buildWidgetLines(state)` with OMP's `setWidget` path. A `setStatus` line remains as a fallback for non-TUI modes (`--print`, `rpc`) where `setFooter` is a no-op.
+- **Pi widget via `setWidget` above the editor.** The 5-row savings box renders via `setWidget(..., { placement: "aboveEditor" })`, sharing `buildWidgetLines(state)` with OMP. The earlier `setFooter` Component factory + `setStatus` fallback for non-TUI modes were removed; Pi's statusbar is no longer overwritten.
 
 - **Pi `setLabel` per-entry on `message_end`.** Marks each finalized assistant turn with `Headroom` for `/tree` navigation; OMP keeps the static no-arg `setLabel("Headroom")`.
 
-- **`scripts/build-pi-entry.ts` + `bun run build:pi`.** Bundles `src/pi-entry.ts` plus the entire core factory into a single `dist-pi/pi-entry.js`. Required because Pi's jiti extension loader chokes on relative `.ts` imports from large extensions (`NameTooLong` on the inlined data URL). The bundled file is what `pi.extensions` points at; the npm package ships `dist-pi/` alongside `src/`.
+- **`scripts/build-pi-entry.ts` + `bun run build:pi`.** Bundles `src/pi-entry.ts` plus the entire core factory into a single `dist-pi/pi-entry.js`. Required because Pi's jiti extension loader chokes on relative `.ts` imports from large extensions (`NameTooLong` on the inlined data URL). The bundled file is what `pi.extensions` points at; the npm package ships `dist-pi/` alongside `src/`. The bundle is also mirrored into `.pi/extensions/omp-headroom.js` for project-local auto-discovery.
+
+- **`widget` config toggle** (`~/.omp/agent/headroom.yml`, env `OMP_HEADROOM_WIDGET`, CLI `/headroom set widget on/off`); on by default. When off, both hosts clear any prior paint and skip rendering entirely. Registered in `HEADROOM_SETTINGS` so it shows up in `/headroom config` and key completion.
 
 ### Changed
 
-- `src/widget.ts` now exports `buildWidgetLines(state)` (extracted from `renderWidget`). OMP's `setWidget` and Pi's `setFooter` factory both render the same lines.
+- `src/widget.ts` now exports `buildWidgetLines(state)` (extracted from `renderWidget`). Both OMP and Pi render via the same `setWidget` call; the host tag only changes the `placement` string (`aboveEditor` for Pi vs `WIDGET_PLACEMENT` for OMP).
 - `renderWidget(ctx, state, host)` wraps all paint operations in try/catch (best-effort). Pi invalidates captured `ctx` across async boundaries (after reload, session switch, or some startup paths); OMP did not. Swallowing the stale-ctx error keeps the extension from tearing down on transient context switches.
 - 6 module-scope helpers gained an optional `host` parameter (`restartProxy`, `doMaintainInstall`, `maintainInstall`, `ensureProxy`, `runHeadroomCompression`, `createHeadroomTranscriptFixture`, `manageHeadroomUserService`, `reconcileProxyVersion`, `connectWithRetry`). All call sites from inside the factory pass `host`; tests are unchanged because they exercise the helpers with their default `host = "omp"` argument.
 - `src/index.ts` factory reads `host = readHost(pi)` at entry; the host tag is set by `src/pi-entry.ts` via `pi[HEADROOM_HOST] = "pi"` and the symbol re-export from `src/host.ts`. Tests pass plain stubs without the symbol → default `"omp"`, back-compat intact.
+- Project-local `.pi/settings.json` gets a `packages` filter entry that disables `git:github.com/asyrjasalo/omp-headroom` (`extensions: []`, `skills: []`, `prompts: []`, `themes: []`). Project-scope settings win over the user's global git-installed copy, so the project-local `.pi/extensions/omp-headroom.js` mirror loads alone. Tool/flag names (`headroom_*`, `--headroom`) are unchanged across hosts.
 
 ### Notes
 
