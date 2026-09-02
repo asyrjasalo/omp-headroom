@@ -67,23 +67,43 @@ The service command writes only `~/.config/systemd/user/headroom-proxy.service`;
 
 ### Pi (Mario Zechner's coding agent)
 
-omp-headroom also works with [Pi](https://github.com/badlogic/pi) as a dual-peer extension. Install once:
+omp-headroom ships as a **dual-peer** extension: the same release works in both [OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi) and [Pi](https://github.com/badlogic/pi) sessions with feature parity.
+
+Install in Pi:
 
 ```bash
 pi install github:DarkPhilosophy/omp-headroom
 ```
 
-The plugin auto-discovers via the `pi.extensions` key. `/headroom` commands work identically; the widget renders as a one-line status via `setStatus` (Pi has no full widget slot). Manual `headroom_compress` / `headroom_retrieve` tools and the Headroom-assisted `/headroom compact` fidelity handler are OMP-only — Pi sessions get automatic `before_provider_request` compression and full `/headroom stats`, `version`, `config`, `update`, `service`, etc.
-
-For local development:
+Or activate for a single checkout via the conventional project-local extensions directory:
 
 ```bash
 git clone https://github.com/DarkPhilosophy/omp-headroom.git
 cd omp-headroom
 bun install
-OMP_HEADROOM_URL=http://127.0.0.1:8787 \
-  pi -e ./src/pi-entry.ts
+bun run build:pi               # bundles dist-pi/pi-entry.js
+ln -sf ../../dist-pi/pi-entry.js .pi/extensions/omp-headroom.js
+pi                              # extension auto-loads on every invocation
 ```
+
+After source changes, `bun run build:pi` refreshes the bundle; the symlink stays current.
+
+**Feature parity:**
+
+| Surface                          | OMP                                                              | Pi                                                                                                                |
+| -------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/headroom <subcommand>`          | full command set                                                  | identical                                                                                                          |
+| Automatic `before_provider_request` compression | yes                                                              | yes                                                                                                                |
+| `headroom_compress` / `headroom_retrieve` / `headroom_stats` tools | registered with zod schemas | registered with typebox schemas |
+| `/headroom compact` (CCR archive + fidelity prompt augmentation) | `session.compacting` → `{context, preserveData}` (additive)         | `session_before_compact` → cancel + `ctx.compact({customInstructions})` (same fidelity lines passed as additional focus) |
+| Savings widget (5-row box)        | `setWidget(EXTENSION_KEY, lines, {placement: "rightEditor"})`      | `setFooter` Component factory; same `buildWidgetLines(state)` source                                                |
+| `setLabel("Headroom")`            | static (no-arg)                                                   | per-entry on `message_end` (marks finalized assistant turns for `/tree`)                                             |
+| Proxy lifecycle (venv provisioning, ROCm/CUDA pinning, autoupdate, systemd unit, `/headroom start/stop/restart/reconnect`) | identical | identical |
+| CCR archival + retrieval fallback | identical | identical |
+
+**Mechanism differences are internal only — no behavioral gaps.** Tool schemas differ because Pi's `registerTool` requires typebox (`TSchema`) while OMP uses zod; the schema literals are equivalent. Compaction hook return shapes differ (`{context, preserveData}` vs `{cancel, compaction}`) because OMP augments the prompt additively while Pi replaces the compaction unit; both achieve the same archival + fidelity outcome. The widget content source (`buildWidgetLines`) is shared.
+
+**End-to-end compression in Pi** still requires the LLM provider to be routed through the Headroom proxy (the same way OMP needs `headroom wrap omp`). On Pi, that means registering a custom-provider extension that points at `OMP_HEADROOM_URL`. Outside this project's scope.
 
 ### Checkout / development
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — Pi coding agent support
+
+### Added
+
+- **Dual-peer support for [Pi](https://github.com/badlogic/pi) (Mario Zechner's coding agent).** The same release now plugs into both [OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi) and Pi sessions with feature parity. `package.json` advertises both `omp.extensions` and `pi.extensions` keys; `peerDependencies` adds `@earendil-works/pi-coding-agent ^0.84.0`.
+
+- **Pi manual tools (`headroom_compress`, `headroom_retrieve`, `headroom_stats`).** Registered via typebox schemas (Pi's `registerTool` requires `TSchema`) loaded through a dynamic import. OMP uses zod on the same factory body. Tool behavior and contract are identical across hosts.
+
+- **Pi `/headroom compact` fidelity handler.** Registers `session_before_compact`, archives the discarded source to CCR, and for `/headroom compact` (gated on `headroomCompactActive`) cancels Pi's default compaction and re-triggers it via `ctx.compact({customInstructions})` with the same Headroom fidelity prompt OMP appends to its `session.compacting` `context` field. Same archival + fidelity outcome, different event shape.
+
+- **Pi widget via `setFooter` Component factory.** The 5-row savings box renders persistently in Pi's footer slot, sharing `buildWidgetLines(state)` with OMP's `setWidget` path. A `setStatus` line remains as a fallback for non-TUI modes (`--print`, `rpc`) where `setFooter` is a no-op.
+
+- **Pi `setLabel` per-entry on `message_end`.** Marks each finalized assistant turn with `Headroom` for `/tree` navigation; OMP keeps the static no-arg `setLabel("Headroom")`.
+
+- **`scripts/build-pi-entry.ts` + `bun run build:pi`.** Bundles `src/pi-entry.ts` plus the entire core factory into a single `dist-pi/pi-entry.js`. Required because Pi's jiti extension loader chokes on relative `.ts` imports from large extensions (`NameTooLong` on the inlined data URL). The bundled file is what `pi.extensions` points at; the npm package ships `dist-pi/` alongside `src/`.
+
+### Changed
+
+- `src/widget.ts` now exports `buildWidgetLines(state)` (extracted from `renderWidget`). OMP's `setWidget` and Pi's `setFooter` factory both render the same lines.
+- `renderWidget(ctx, state, host)` wraps all paint operations in try/catch (best-effort). Pi invalidates captured `ctx` across async boundaries (after reload, session switch, or some startup paths); OMP did not. Swallowing the stale-ctx error keeps the extension from tearing down on transient context switches.
+- 6 module-scope helpers gained an optional `host` parameter (`restartProxy`, `doMaintainInstall`, `maintainInstall`, `ensureProxy`, `runHeadroomCompression`, `createHeadroomTranscriptFixture`, `manageHeadroomUserService`, `reconcileProxyVersion`, `connectWithRetry`). All call sites from inside the factory pass `host`; tests are unchanged because they exercise the helpers with their default `host = "omp"` argument.
+- `src/index.ts` factory reads `host = readHost(pi)` at entry; the host tag is set by `src/pi-entry.ts` via `pi[HEADROOM_HOST] = "pi"` and the symbol re-export from `src/host.ts`. Tests pass plain stubs without the symbol → default `"omp"`, back-compat intact.
+
+### Notes
+
+- The existing 94-test suite passes unchanged against the refactored factory.
+- End-to-end compression in Pi additionally requires routing the LLM provider through the Headroom proxy (analogous to OMP's `headroom wrap omp`). That's a separate custom-provider extension, not part of this package.
+
 ## 0.1.4 — 2026-07-27
 
 ### Added
