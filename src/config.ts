@@ -94,6 +94,7 @@ export const PROVIDER_MIN_TEXT_CHARS = cfgNum(
   "OMP_HEADROOM_MIN_PROVIDER_CHARS",
   1_000,
 );
+export const WIDGET_ENABLED = cfgBool("widget", "OMP_HEADROOM_WIDGET", true);
 export const ADAPTIVE_THRESHOLDS = cfgBoolOff("adaptive", "OMP_HEADROOM_ADAPTIVE");
 export const ADAPTIVE_START_RATIO = cfgNum("adaptive_start", "OMP_HEADROOM_ADAPTIVE_START", 0.5);
 export const ADAPTIVE_FULL_RATIO = cfgNum("adaptive_full", "OMP_HEADROOM_ADAPTIVE_FULL", 0.9);
@@ -188,6 +189,13 @@ export const HEADROOM_SETTINGS: readonly HeadroomSetting[] = [
     kind: "string",
     def: DEFAULT_HEADROOM_BIN,
     description: "Headroom proxy binary path",
+  },
+  {
+    key: "widget",
+    env: "OMP_HEADROOM_WIDGET",
+    kind: "boolean",
+    def: true,
+    description: "Show the Headroom widget (omp: right side panel; pi: above editor)",
   },
   {
     key: "min_tool_chars",

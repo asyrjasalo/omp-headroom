@@ -3,5 +3,14 @@
   "defaultProvider": "occam/minimax",
   "enabledModels": [
     "*minimax-M3*"
+  ],
+  "packages": [
+    {
+      "source": "git:github.com/asyrjasalo/omp-headroom",
+      "extensions": [],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    }
   ]
 }

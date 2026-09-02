@@ -6750,6 +6750,7 @@ var HEADROOM_BIN = cfgStr("bin", "OMP_HEADROOM_BIN", DEFAULT_HEADROOM_BIN);
 var MIN_TOOL_TEXT_CHARS = cfgNum("min_tool_chars", "OMP_HEADROOM_MIN_TOOL_CHARS", 12000);
 var ANTHROPIC_MIN_TOOL_TEXT_CHARS = cfgNum("anthropic_min_tool_chars", "OMP_HEADROOM_ANTHROPIC_MIN_TOOL_CHARS", 8000);
 var PROVIDER_MIN_TEXT_CHARS = cfgNum("min_provider_chars", "OMP_HEADROOM_MIN_PROVIDER_CHARS", 1000);
+var WIDGET_ENABLED = cfgBool("widget", "OMP_HEADROOM_WIDGET", true);
 var ADAPTIVE_THRESHOLDS = cfgBoolOff("adaptive", "OMP_HEADROOM_ADAPTIVE");
 var ADAPTIVE_START_RATIO = cfgNum("adaptive_start", "OMP_HEADROOM_ADAPTIVE_START", 0.5);
 var ADAPTIVE_FULL_RATIO = cfgNum("adaptive_full", "OMP_HEADROOM_ADAPTIVE_FULL", 0.9);
@@ -6793,6 +6794,13 @@ var HEADROOM_SETTINGS = [
     kind: "string",
     def: DEFAULT_HEADROOM_BIN,
     description: "Headroom proxy binary path"
+  },
+  {
+    key: "widget",
+    env: "OMP_HEADROOM_WIDGET",
+    kind: "boolean",
+    def: true,
+    description: "Show the Headroom widget (omp: right side panel; pi: above editor)"
   },
   {
     key: "min_tool_chars",
@@ -8233,20 +8241,17 @@ function renderWidget(ctx, state, host = "omp") {
   try {
     if (!ctx?.hasUI)
       return;
-    if (host === "pi") {
-      const ps = sessionProxyStats(state);
-      const saved = asNumber(ps?.tokens_saved);
-      const req = ps && asNumber(ps.requests) > 0 ? asNumber(ps.requests) : state.providerCompressions;
-      const status = state.proxyReady ? `Headroom ready · saved ${formatInt(saved)} · req ${formatInt(req)}` : state.enabled ? `Headroom ${state.proxyStarting ? "starting…" : state.connectExhausted ? "reconnect: /headroom reconnect" : state.installState ? `${state.installState}…` : "offline"}` : "Headroom off";
-      ctx.ui?.setStatus?.(EXTENSION_KEY, status);
+    if (!WIDGET_ENABLED) {
+      ctx.ui?.setWidget?.(EXTENSION_KEY, undefined, { placement: WIDGET_PLACEMENT });
+      ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
       return;
     }
     const lines = buildWidgetLines(state);
+    const placement = host === "pi" ? "aboveEditor" : WIDGET_PLACEMENT;
     ctx.ui?.setWidget?.(EXTENSION_KEY, lines, {
-      placement: WIDGET_PLACEMENT,
-      priority: WIDGET_PRIORITY
+      placement,
+      ...host === "omp" ? { priority: WIDGET_PRIORITY } : {}
     });
-    ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
   } catch {}
 }
 function commandSummary(state) {
@@ -9656,32 +9661,6 @@ function headroomExtension(pi) {
     type: "boolean",
     default: true
   });
-  if (host === "pi") {
-    const setFooter = pi.ui;
-    const installFooter = (ctx) => {
-      const ui = ctx?.ui;
-      ui?.setFooter?.((_tui, _theme, _footerData) => {
-        let unsub;
-        try {
-          unsub = _footerData.onBranchChange?.(() => {});
-        } catch {}
-        return {
-          invalidate() {},
-          render(_width) {
-            return buildWidgetLines(state);
-          },
-          dispose() {
-            try {
-              unsub?.();
-            } catch {}
-          }
-        };
-      });
-    };
-    pi.on("session_start", async (_event, ctx) => {
-      installFooter(ctx);
-    });
-  }
   pi.on("session_start", async (_event, ctx) => {
     const sid = ctx?.sessionManager?.getSessionId?.();
     await prepareArchiveSession(ctx, state);

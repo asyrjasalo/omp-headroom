@@ -1928,65 +1928,8 @@ export default function headroomExtension(pi: ExtensionAPI) {
     default: true,
   });
 
-  // Pi widget: install a footer Component factory so the 5-row Headroom box
-  // renders persistently in the footer slot (OMP equivalent: setWidget with
-  // placement). The factory closes over `state`; `buildWidgetLines` recomputes
-  // the lines on every render, so stats updates show immediately on the next
-  // paint cycle (Pi re-renders the footer when `tui.requestRender()` fires,
-  // which our existing `renderWidget` path triggers via setStatus invalidation).
-  if (host === "pi") {
-    const setFooter = (pi as { ui?: never }).ui as never;
-    void setFooter; // type-only placeholder; setFooter is on ctx, not pi
-    // ctx.ui.setFooter is on ExtensionContext, not ExtensionAPI. Install on
-    // first session_start when we have a valid ctx.
-    const installFooter = (ctx: HeadroomCtx) => {
-      const ui = ctx?.ui as
-        | {
-            setFooter?: (
-              factory:
-                | ((
-                    tui: unknown,
-                    theme: unknown,
-                    footerData: { onBranchChange?: (cb: () => void) => () => void },
-                  ) => {
-                    render: (width: number) => string[];
-                    invalidate: () => void;
-                    dispose?: () => void;
-                  })
-                | undefined,
-            ) => void;
-          }
-        | undefined;
-      ui?.setFooter?.((_tui, _theme, _footerData) => {
-        let unsub: (() => void) | undefined;
-        try {
-          unsub = _footerData.onBranchChange?.(() => {
-            // Re-render is requested via setStatus invalidation in our
-            // existing flow; the footer factory itself re-reads `state` on
-            // each render call, so a new render is enough.
-          });
-        } catch {
-          /* footerData.onBranchChange may not exist on older Pi versions */
-        }
-        return {
-          invalidate() {},
-          render(_width: number) {
-            return buildWidgetLines(state);
-          },
-          dispose() {
-            try {
-              unsub?.();
-            } catch {
-              /* noop */
-            }
-          },
-        };
-      });
-    };
-    pi.on("session_start", async (_event, ctx) => {
-      installFooter(ctx);
-    });
-  }
+  // Pi renders via setWidget(placement: "aboveEditor") inside renderWidget; no
+  // footer factory needed — this avoids overriding pi's statusbar.
 
   pi.on("session_start", async (_event, ctx) => {
     // Capture the OMP session ID for per-project proxy routing. Each session

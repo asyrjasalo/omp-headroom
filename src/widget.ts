@@ -5,6 +5,7 @@ import {
   DASHBOARD_URL,
   EXTENSION_KEY,
   PROXY_URL,
+  WIDGET_ENABLED,
   WIDGET_PLACEMENT,
   WIDGET_PRIORITY,
 } from "./config.ts";
@@ -179,31 +180,22 @@ export function buildWidgetLines(state: HeadroomState): string[] {
 export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host = "omp"): void {
   try {
     if (!ctx?.hasUI) return;
-    if (host === "pi") {
-      // Pi has no setWidget slot — widget renders as a multi-line footer via
-      // `setFooter` (installed separately). This branch also keeps a compact
-      // `setStatus` line for non-TUI modes (--print, rpc) where setFooter is
-      // a no-op.
-      const ps = sessionProxyStats(state);
-      const saved = asNumber(ps?.tokens_saved);
-      const req =
-        ps && asNumber(ps.requests) > 0 ? asNumber(ps.requests) : state.providerCompressions;
-      const status = state.proxyReady
-        ? `Headroom ready · saved ${formatInt(saved)} · req ${formatInt(req)}`
-        : state.enabled
-          ? `Headroom ${state.proxyStarting ? "starting…" : state.connectExhausted ? "reconnect: /headroom reconnect" : state.installState ? `${state.installState}…` : "offline"}`
-          : "Headroom off";
-      ctx.ui?.setStatus?.(EXTENSION_KEY, status);
+    // Widget off — clear any prior paint and bail. Config is read at import;
+    // toggling takes effect on next launch.
+    if (!WIDGET_ENABLED) {
+      ctx.ui?.setWidget?.(EXTENSION_KEY, undefined, { placement: WIDGET_PLACEMENT as never });
+      ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
       return;
     }
     const lines = buildWidgetLines(state);
-    // The extension config permits rightEditor and priority; this dev API's widget-options
-    // declaration is older and only models above/below editor placement.
+    // Pi supports the same widget slot as OMP; render above the editor so it
+    // never overrides pi's statusbar. OMP uses the configured placement
+    // (default rightEditor) plus its priority field.
+    const placement = host === "pi" ? "aboveEditor" : WIDGET_PLACEMENT;
     ctx.ui?.setWidget?.(EXTENSION_KEY, lines, {
-      placement: WIDGET_PLACEMENT,
-      priority: WIDGET_PRIORITY,
+      placement,
+      ...(host === "omp" ? { priority: WIDGET_PRIORITY } : {}),
     } as never);
-    ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
   } catch {
     // Pi invalidates captured ctx across async boundaries (e.g. after reload,
     // session switch, or even some startup paths); the OMP runtime didn't.
