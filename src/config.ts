@@ -13,7 +13,11 @@ export const COMPRESS_TOOL = "headroom_compress";
 export const STATS_TOOL = "headroom_stats";
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8787";
-export const HEADROOM_CONFIG_PATH = join(homedir(), ".omp", "agent", "headroom.yml");
+const OMP_CONFIG_PATH = join(homedir(), ".omp", "agent", "headroom.yml");
+const PI_CONFIG_PATH = join(homedir(), ".pi", "agent", "headroom.yml");
+// ~/.pi/agent/headroom.yml wins when present so pi users can keep their
+// config separate from OMP; otherwise fall back to the legacy OMP location.
+export const HEADROOM_CONFIG_PATH = existsSync(PI_CONFIG_PATH) ? PI_CONFIG_PATH : OMP_CONFIG_PATH;
 export const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 export const SYSTEMD_TEMPLATE_PATH = join(PACKAGE_ROOT, "systemd", "headroom-proxy.service.in");
 
