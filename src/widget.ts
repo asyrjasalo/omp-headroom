@@ -115,26 +115,8 @@ export function localCompressionLine(state: HeadroomState): string {
   return `saved ${formatCompactTokens(saved)} · ${formatPct(pct)}${archiveSuffix}`;
 }
 
-export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host = "omp"): void {
-  try {
-    if (!ctx?.hasUI) return;
-  if (host === "pi") {
-    // Pi has no full widget slot; render a one-line status via `setStatus`.
-    const ps = sessionProxyStats(state);
-    const saved = asNumber(ps?.tokens_saved);
-    const req =
-      ps && asNumber(ps.requests) > 0 ? asNumber(ps.requests) : state.providerCompressions;
-    const status = state.proxyReady
-      ? `Headroom ready · saved ${formatInt(saved)} · req ${formatInt(req)}`
-      : state.enabled
-        ? `Headroom ${state.proxyStarting ? "starting…" : state.connectExhausted ? "reconnect: /headroom reconnect" : state.installState ? `${state.installState}…` : "offline"}`
-        : "Headroom off";
-    ctx.ui?.setStatus?.(EXTENSION_KEY, status);
-    return;
-  }
+export function buildWidgetLines(state: HeadroomState): string[] {
   const ready = state.enabled && state.proxyReady;
-  // Rainbow + dashboard link IS the "ready" cue; when not ready the title goes
-  // gray and the problem (truncated) rides next to it in the border.
   const titleStyled = ready
     ? link(DASHBOARD_URL, rainbow("Headroom", state.rainbowPhase))
     : color(90, "Headroom");
@@ -177,8 +159,6 @@ export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host 
       updateLine.length,
     ) + 1,
   );
-  // Narrow caps: the right border segments are decoration — drop them before
-  // letting a border row overflow the box width.
   if (topLeftRaw.length + topRightRaw.length + 1 > inner) {
     topRightRaw = "";
     topRightStyled = "";
@@ -189,18 +169,41 @@ export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host 
   }
   const rows = [row(ctxLine, inner), row(cacheLine, inner), row(activityLine, inner)];
   if (updateLine) rows.push(row(updateLine, inner));
-  const lines = [
+  return [
     borderLine(inner, "╭", "╮", topLeftRaw, topLeftStyled, topRightRaw, topRightStyled),
     ...rows,
     borderLine(inner, "╰", "╯", botLeftRaw, botLeftStyled, botRightRaw, botRightStyled),
   ];
-  // The extension config permits rightEditor and priority; this dev API's widget-options
-  // declaration is older and only models above/below editor placement.
-  ctx.ui?.setWidget?.(EXTENSION_KEY, lines, {
-    placement: WIDGET_PLACEMENT,
-    priority: WIDGET_PRIORITY,
-  } as never);
-  ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
+}
+
+export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host = "omp"): void {
+  try {
+    if (!ctx?.hasUI) return;
+    if (host === "pi") {
+      // Pi has no setWidget slot — widget renders as a multi-line footer via
+      // `setFooter` (installed separately). This branch also keeps a compact
+      // `setStatus` line for non-TUI modes (--print, rpc) where setFooter is
+      // a no-op.
+      const ps = sessionProxyStats(state);
+      const saved = asNumber(ps?.tokens_saved);
+      const req =
+        ps && asNumber(ps.requests) > 0 ? asNumber(ps.requests) : state.providerCompressions;
+      const status = state.proxyReady
+        ? `Headroom ready · saved ${formatInt(saved)} · req ${formatInt(req)}`
+        : state.enabled
+          ? `Headroom ${state.proxyStarting ? "starting…" : state.connectExhausted ? "reconnect: /headroom reconnect" : state.installState ? `${state.installState}…` : "offline"}`
+          : "Headroom off";
+      ctx.ui?.setStatus?.(EXTENSION_KEY, status);
+      return;
+    }
+    const lines = buildWidgetLines(state);
+    // The extension config permits rightEditor and priority; this dev API's widget-options
+    // declaration is older and only models above/below editor placement.
+    ctx.ui?.setWidget?.(EXTENSION_KEY, lines, {
+      placement: WIDGET_PLACEMENT,
+      priority: WIDGET_PRIORITY,
+    } as never);
+    ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
   } catch {
     // Pi invalidates captured ctx across async boundaries (e.g. after reload,
     // session switch, or even some startup paths); the OMP runtime didn't.

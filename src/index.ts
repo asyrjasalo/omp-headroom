@@ -110,6 +110,7 @@ import {
 } from "./util.ts";
 import {
   archiveSavingsPercent,
+  buildWidgetLines,
   cacheUsageLine,
   commandSummary,
   localCompressionLine,
@@ -1818,9 +1819,10 @@ export default function headroomExtension(pi: ExtensionAPI) {
   const host: Host = readHost(pi);
   // pi.zod IS the zod module object (loader sets `readonly zod = z`), so
   // `pi.zod.object` exists directly. Older shims exposed it as `{ z }`. Pi
-  // doesn't expose zod at all (uses typebox for tools), so guard for undefined.
+  // doesn't expose zod at all (uses typebox for tools), so guard for undefined
+  // and fall back to a placeholder so the OMP-only tool block stays typed.
   const legacyZod = pi.zod as unknown as { z?: typeof pi.zod } | undefined;
-  const z: unknown = legacyZod?.z ?? legacyZod;
+  const z = (legacyZod?.z ?? legacyZod ?? {}) as NonNullable<typeof pi.zod>;
   const toolRegistrar = pi as unknown as ExtensionToolRegistrar;
   if (host === "omp") pi.setLabel?.("Headroom");
   let latestCtx: ExtensionContext | undefined;
@@ -1926,6 +1928,66 @@ export default function headroomExtension(pi: ExtensionAPI) {
     default: true,
   });
 
+  // Pi widget: install a footer Component factory so the 5-row Headroom box
+  // renders persistently in the footer slot (OMP equivalent: setWidget with
+  // placement). The factory closes over `state`; `buildWidgetLines` recomputes
+  // the lines on every render, so stats updates show immediately on the next
+  // paint cycle (Pi re-renders the footer when `tui.requestRender()` fires,
+  // which our existing `renderWidget` path triggers via setStatus invalidation).
+  if (host === "pi") {
+    const setFooter = (pi as { ui?: never }).ui as never;
+    void setFooter; // type-only placeholder; setFooter is on ctx, not pi
+    // ctx.ui.setFooter is on ExtensionContext, not ExtensionAPI. Install on
+    // first session_start when we have a valid ctx.
+    const installFooter = (ctx: HeadroomCtx) => {
+      const ui = ctx?.ui as
+        | {
+            setFooter?: (
+              factory:
+                | ((
+                    tui: unknown,
+                    theme: unknown,
+                    footerData: { onBranchChange?: (cb: () => void) => () => void },
+                  ) => {
+                    render: (width: number) => string[];
+                    invalidate: () => void;
+                    dispose?: () => void;
+                  })
+                | undefined,
+            ) => void;
+          }
+        | undefined;
+      ui?.setFooter?.((_tui, _theme, _footerData) => {
+        let unsub: (() => void) | undefined;
+        try {
+          unsub = _footerData.onBranchChange?.(() => {
+            // Re-render is requested via setStatus invalidation in our
+            // existing flow; the footer factory itself re-reads `state` on
+            // each render call, so a new render is enough.
+          });
+        } catch {
+          /* footerData.onBranchChange may not exist on older Pi versions */
+        }
+        return {
+          invalidate() {},
+          render(_width: number) {
+            return buildWidgetLines(state);
+          },
+          dispose() {
+            try {
+              unsub?.();
+            } catch {
+              /* noop */
+            }
+          },
+        };
+      });
+    };
+    pi.on("session_start", async (_event, ctx) => {
+      installFooter(ctx);
+    });
+  }
+
   pi.on("session_start", async (_event, ctx) => {
     // Capture the OMP session ID for per-project proxy routing. Each session
     // gets its own stats bucket at /p/<sessionId>/stats so multi-instance
@@ -1973,9 +2035,9 @@ export default function headroomExtension(pi: ExtensionAPI) {
     state.ompCompactions = (state.ompCompactions || 0) + 1;
     renderWidget(ctx, state, host);
   });
-  // Provider-native prompt cache telemetry. OMP normalizes cache usage on the
-  // finalized assistant message, so this observes the real provider response
-  // without changing provider routing or request payloads.
+  // Provider-native prompt cache telemetry. Both OMP and Pi normalize cache
+  // usage on the finalized assistant message, so this observes the real
+  // provider response without changing provider routing or request payloads.
   pi.on("message_end", async (event, ctx) => {
     if (!isMainSession(ctx) || event?.message?.role !== "assistant") return;
     ensureMainCaptured(ctx);
@@ -1983,6 +2045,22 @@ export default function headroomExtension(pi: ExtensionAPI) {
     state.cacheInputTokens += Math.max(0, asNumber(usage?.input));
     state.cacheReadTokens += Math.max(0, asNumber(usage?.cacheRead));
     state.cacheWriteTokens += Math.max(0, asNumber(usage?.cacheWrite));
+    // Pi's setLabel is per-entry (entryId + label), unlike OMP's static
+    // no-arg setLabel. Find the matching entry by identity and label it so
+    // the user can spot Headroom-tracked assistant turns in /tree.
+    if (host === "pi") {
+      const sm = (ctx as { sessionManager?: { getBranch?: () => unknown[] } }).sessionManager;
+      const branch = sm?.getBranch?.();
+      if (Array.isArray(branch)) {
+        for (let i = branch.length - 1; i >= 0; i--) {
+          const entry = branch[i] as { type?: string; message?: unknown; id?: string };
+          if (entry?.type === "message" && entry.message === event.message && entry.id) {
+            (pi as { setLabel?: (id: string, l: string) => void }).setLabel?.(entry.id, "Headroom");
+            break;
+          }
+        }
+      }
+    }
     renderWidget(ctx, state, host);
   });
   // Headroom-powered session compaction (hybrid architecture).
@@ -2042,6 +2120,52 @@ export default function headroomExtension(pi: ExtensionAPI) {
     ).on("widget_layout", (e) => {
       if (e.key !== EXTENSION_KEY) return;
       widgetOnScreen = e.visible;
+    });
+  } else if (host === "pi") {
+    // Pi emits `session_before_compact` (snake) instead of OMP's `session.compacting`
+    // (dotted). The return shape is also different: Pi returns `CompactionResult`
+    // (a full replacement) or `cancel: true`, while OMP's `session.compacting`
+    // returns `{context, preserveData}` as an ADDITIVE prompt augmentation.
+    //
+    // 1:1 parity path: archive the discarded source to CCR (the durable, retrievable
+    // artifact — the core feature), then either (a) let Pi's compaction proceed
+    // unchanged for ordinary compactions, or (b) for `/headroom compact`, cancel
+    // Pi's default compaction and re-trigger via `ctx.compact({customInstructions})`
+    // with Headroom's fidelity guidance baked in as additional focus.
+    pi.on("session_before_compact", async (event, ctx) => {
+      try {
+        const prep = event?.preparation;
+        const messages = Array.isArray(prep?.messagesToSummarize) ? prep.messagesToSummarize : [];
+        if (messages.length === 0) return undefined;
+        const originalText = JSON.stringify(messages, null, 2);
+        const hash = createHash("sha256").update(originalText).digest("hex").slice(0, 24);
+        const persisted = await persistCcrByHash(hash, originalText, state, ctx);
+        if (persisted === 0) {
+          pi.logger?.warn?.(
+            "headroom session_before_compact: CCR archive failed; letting Pi compact normally.",
+          );
+          return undefined;
+        }
+        state.lastCompactionCcrHash = hash;
+        if (!state.headroomCompactActive) return undefined; // not a /headroom compact — preserve Pi's native summary verbatim
+        // Cancel Pi's default compaction and re-run it with Headroom's fidelity
+        // instructions appended via `customInstructions` (Pi's prompt-augmentation
+        // surface). The summary stays Pi's native LLM summary; only the
+        // instructions change. CCR retrievability is intact either way.
+        if (typeof ctx.compact === "function") {
+          ctx.compact({
+            customInstructions: [
+              "Headroom archival active: full originals of the summarized conversation are persisted and retrievable.",
+              `Full archived source — preserve this exact reference in the summary: Retrieve more: hash=${hash}`,
+              "Preserve every file path, identifier, decision, error, constraint, and tool result verbatim where they matter. This summary replaces the full history.",
+            ].join("\n"),
+          } as Parameters<typeof ctx.compact>[0]);
+        }
+        return { cancel: true };
+      } catch (error) {
+        pi.logger?.warn?.(`headroom session_before_compact failed: ${errorMessage(error)}`);
+        return undefined;
+      }
     });
   }
 
@@ -2227,12 +2351,12 @@ export default function headroomExtension(pi: ExtensionAPI) {
     }
   });
 
-  // Tool registration needs zod for parameter schemas. Pi uses typebox instead
-  // of zod, so skip these tools on Pi (feature gap — manual headroom_compress
-  // and headroom_retrieve are OMP-only). If zod is also unavailable on the
-  // OMP host, skip the tools but never let it abort the whole extension —
+  // Tool registration. OMP uses zod for parameter schemas; Pi uses typebox
+  // (`TSchema`). Both hosts get the same three tools with the same execute
+  // bodies — only the schema literal differs. If zod/typebox is also unavailable
+  // on a given host, skip the tools but never let it abort the whole extension —
   // the widget + compression hooks must still load.
-  if (z && host === "omp") {
+  if (host === "omp" && z) {
     toolRegistrar.registerTool({
       name: RETRIEVE_TOOL,
       label: "Headroom Retrieve",
@@ -2316,7 +2440,138 @@ export default function headroomExtension(pi: ExtensionAPI) {
         };
       },
     });
-  } // close if (z)
+  } // close if (z) — OMP host branch
+  else if (host === "pi") {
+    // Pi host branch: register the same three tools with typebox schemas
+    // (Pi's `registerTool` requires `TSchema`). typebox is a transitive dep
+    // of @earendil-works/pi-coding-agent; the bundled dist-pi/pi-entry.js
+    // resolves it at runtime via Node module resolution. The schema literals
+    // are the typebox equivalents of the z.object({...}) definitions above.
+    // The tool registrations happen asynchronously after the factory returns
+    // — registerTool mutates Pi's internal list, so the small delay before
+    // tools become available is fine.
+    void import("typebox").then((typeboxModule) => {
+      // biome-ignore lint/suspicious/noExplicitAny: typebox's Type is a complex union; structural cast loses methods, so we cast the inner schema literals as any.
+      const Type = (typeboxModule as unknown as { Type: unknown }).Type as any;
+      if (!Type) return;
+      toolRegistrar.registerTool({
+        name: RETRIEVE_TOOL,
+        label: "Headroom Retrieve",
+        description: RETRIEVE_DESCRIPTION,
+        parameters: Type.Object({
+          hash: Type.String({ description: "Hash key from a Headroom compression marker." }),
+          query: Type.Optional(
+            Type.String({ description: "Optional search query to filter original content." }),
+          ),
+        }),
+        async execute(
+          _toolCallId,
+          params: Record<string, unknown>,
+          signal: AbortSignal | undefined,
+          _onUpdate: unknown,
+          ctx: HeadroomCtx,
+        ) {
+          await ensureProxy(ctx, state, 5_000, host);
+          let data: Record<string, unknown>;
+          try {
+            const retrieved = await retrieveViaProxy(
+              PROXY_URL,
+              String(params.hash || ""),
+              typeof params.query === "string" ? params.query : undefined,
+              signal,
+              TOOL_TIMEOUT_MS,
+            );
+            data = isRecord(retrieved)
+              ? retrieved
+              : { error: String(retrieved), hash: String(params.hash || "") };
+          } catch (error) {
+            data = { error: errorMessage(error), hash: String(params.hash || "") };
+          }
+          let fallback = false;
+          if (data.error) {
+            const sessionId = ctx?.sessionManager?.getSessionId?.() || state.sessionId;
+            const original = await readCcrFallback(String(params.hash || ""), undefined, sessionId);
+            if (original !== undefined) {
+              data = { original_content: original };
+              fallback = true;
+            }
+          }
+          state.ccrHashes += 1;
+          refreshStatsAndRender(ctx, state, host);
+          return {
+            content: [
+              {
+                type: "text",
+                text: stringifyRetrieveResult(data, String(params.hash || ""), fallback),
+              },
+            ],
+            isError: !!data.error,
+            details: data,
+          };
+        },
+      });
+
+      toolRegistrar.registerTool({
+        name: COMPRESS_TOOL,
+        label: "Headroom Compress",
+        description:
+          "Compress large content to save context window space. The original is stored by Headroom and can be retrieved later with headroom_retrieve when a hash is present.",
+        parameters: Type.Object({
+          content: Type.String({
+            description: "Text, JSON, logs, code, or search results to compress.",
+          }),
+        }),
+        async execute(
+          _toolCallId,
+          params: Record<string, unknown>,
+          _signal: AbortSignal | undefined,
+          _onUpdate: unknown,
+          ctx: HeadroomCtx,
+        ) {
+          const result = await runHeadroomCompression(
+            String(params.content || ""),
+            ctx,
+            state,
+            host,
+          );
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  typeof result.compressed === "string"
+                    ? result.compressed
+                    : String(params.content || ""),
+              },
+            ],
+            details: result.details,
+          };
+        },
+      });
+
+      toolRegistrar.registerTool({
+        name: STATS_TOOL,
+        label: "Headroom Stats",
+        description: "Show Headroom compression statistics for this session and proxy.",
+        parameters: Type.Object({}),
+        async execute(
+          _toolCallId,
+          _params: Record<string, unknown>,
+          _signal: AbortSignal | undefined,
+          _onUpdate: unknown,
+          ctx: HeadroomCtx,
+        ) {
+          await ensureProxy(ctx, state, 3_000, host);
+          await fetchStats(state, true);
+          renderWidget(ctx, state, host);
+          return {
+            content: [{ type: "text", text: commandSummary(state) }],
+            details: state.stats || {},
+          };
+        },
+      });
+    });
+  }
   const UPDATE_AUTO_CLEAR_MS = 45_000;
   const headroomCommand = {
     description:
