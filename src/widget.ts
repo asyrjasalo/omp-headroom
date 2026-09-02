@@ -8,6 +8,7 @@ import {
   WIDGET_PLACEMENT,
   WIDGET_PRIORITY,
 } from "./config.ts";
+import type { Host } from "./host.ts";
 import { shared, subagentSessionIds } from "./state.ts";
 import type { HeadroomCtx, HeadroomState, ProxyProjectStats } from "./types.ts";
 import {
@@ -114,8 +115,23 @@ export function localCompressionLine(state: HeadroomState): string {
   return `saved ${formatCompactTokens(saved)} · ${formatPct(pct)}${archiveSuffix}`;
 }
 
-export function renderWidget(ctx: HeadroomCtx, state: HeadroomState): void {
-  if (!ctx?.hasUI) return;
+export function renderWidget(ctx: HeadroomCtx, state: HeadroomState, host: Host = "omp"): void {
+  try {
+    if (!ctx?.hasUI) return;
+  if (host === "pi") {
+    // Pi has no full widget slot; render a one-line status via `setStatus`.
+    const ps = sessionProxyStats(state);
+    const saved = asNumber(ps?.tokens_saved);
+    const req =
+      ps && asNumber(ps.requests) > 0 ? asNumber(ps.requests) : state.providerCompressions;
+    const status = state.proxyReady
+      ? `Headroom ready · saved ${formatInt(saved)} · req ${formatInt(req)}`
+      : state.enabled
+        ? `Headroom ${state.proxyStarting ? "starting…" : state.connectExhausted ? "reconnect: /headroom reconnect" : state.installState ? `${state.installState}…` : "offline"}`
+        : "Headroom off";
+    ctx.ui?.setStatus?.(EXTENSION_KEY, status);
+    return;
+  }
   const ready = state.enabled && state.proxyReady;
   // Rainbow + dashboard link IS the "ready" cue; when not ready the title goes
   // gray and the problem (truncated) rides next to it in the border.
@@ -185,6 +201,11 @@ export function renderWidget(ctx: HeadroomCtx, state: HeadroomState): void {
     priority: WIDGET_PRIORITY,
   } as never);
   ctx.ui?.setStatus?.(EXTENSION_KEY, undefined);
+  } catch {
+    // Pi invalidates captured ctx across async boundaries (e.g. after reload,
+    // session switch, or even some startup paths); the OMP runtime didn't.
+    // Best-effort painting — never let a stale ctx tear down the extension.
+  }
 }
 
 export function commandSummary(state: HeadroomState): string {

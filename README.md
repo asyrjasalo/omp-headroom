@@ -65,6 +65,26 @@ The service command writes only `~/.config/systemd/user/headroom-proxy.service`;
 /headroom service uninstall
 ```
 
+### Pi (Mario Zechner's coding agent)
+
+omp-headroom also works with [Pi](https://github.com/badlogic/pi) as a dual-peer extension. Install once:
+
+```bash
+pi install github:DarkPhilosophy/omp-headroom
+```
+
+The plugin auto-discovers via the `pi.extensions` key. `/headroom` commands work identically; the widget renders as a one-line status via `setStatus` (Pi has no full widget slot). Manual `headroom_compress` / `headroom_retrieve` tools and the Headroom-assisted `/headroom compact` fidelity handler are OMP-only — Pi sessions get automatic `before_provider_request` compression and full `/headroom stats`, `version`, `config`, `update`, `service`, etc.
+
+For local development:
+
+```bash
+git clone https://github.com/DarkPhilosophy/omp-headroom.git
+cd omp-headroom
+bun install
+OMP_HEADROOM_URL=http://127.0.0.1:8787 \
+  pi -e ./src/pi-entry.ts
+```
+
 ### Checkout / development
 
 ```bash

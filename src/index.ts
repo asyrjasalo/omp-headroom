@@ -76,6 +76,7 @@ import {
   VENV_PYTHON,
   WIDGET_PLACEMENT,
 } from "./config.ts";
+import { type Host, readHost } from "./host.ts";
 import {
   effectiveProviderFormat,
   payloadHasRetrieveTool,
@@ -249,7 +250,7 @@ function commandFailure(result) {
   return detail ? clip(detail, 200) : `exit code ${result.code}`;
 }
 
-async function manageHeadroomUserService(action, ctx, state) {
+async function manageHeadroomUserService(action, ctx, state, host: Host = "omp") {
   if (action === "status") {
     const configured = existsSync(USER_SYSTEMD_UNIT_PATH) || (await systemdUnitAvailable());
     const active = await systemdUnitActive();
@@ -261,7 +262,7 @@ async function manageHeadroomUserService(action, ctx, state) {
   }
 
   if (action === "install") {
-    if (!existsSync(HEADROOM_BIN)) await maintainInstall(ctx, state, true);
+    if (!existsSync(HEADROOM_BIN)) await maintainInstall(ctx, state, true, host);
     if (!existsSync(HEADROOM_BIN)) {
       ctx.ui.notify(
         `Headroom service was not installed because its executable is missing: ${HEADROOM_BIN}${state.lastError ? `\n${state.lastError}` : ""}`,
@@ -326,7 +327,7 @@ async function manageHeadroomUserService(action, ctx, state) {
   ctx.ui.notify("Headroom user service disabled and removed.", "info");
 }
 
-async function restartProxy(ctx, state) {
+async function restartProxy(ctx, state, host: Host = "omp") {
   const ownedProcess = state.proxyProcess;
   if (ownedProcess) {
     ownedProcess.kill("SIGTERM");
@@ -344,12 +345,12 @@ async function restartProxy(ctx, state) {
     state.proxyStarting = false;
     state.lastError =
       "Refusing to restart an unowned Headroom proxy; use the service manager that owns it.";
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
     return false;
   }
   state.proxyReady = false;
   state.proxyStarting = false;
-  return ensureProxy(ctx, state, 25_000);
+  return ensureProxy(ctx, state, 25_000, host);
 }
 
 async function installedVersion() {
@@ -472,22 +473,22 @@ function detectAmdGpu() {
   }
   return false;
 }
-function maintainInstall(ctx, state, force = false) {
+function maintainInstall(ctx, state, force = false, host: Host = "omp") {
   if (!maintenanceInFlight) {
-    maintenanceInFlight = doMaintainInstall(ctx, state, force).finally(() => {
+    maintenanceInFlight = doMaintainInstall(ctx, state, force, host).finally(() => {
       maintenanceInFlight = undefined;
     });
   }
   return maintenanceInFlight;
 }
 
-async function doMaintainInstall(ctx, state, force) {
+async function doMaintainInstall(ctx, state, force, host: Host = "omp") {
   try {
     if (!existsSync(HEADROOM_BIN)) {
       if (!acquireUpdateLock()) return;
       try {
         state.installState = "installing";
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         ctx?.ui?.notify?.(`Installing ${PACKAGE_SPEC} into ${VENV_DIR}…`, "info");
         if (!existsSync(VENV_PYTHON)) {
           const venv = await createHeadroomVenv();
@@ -537,7 +538,7 @@ async function doMaintainInstall(ctx, state, force) {
     try {
       const wasRocm = (await isRocmVenv()) || detectAmdGpu();
       state.installState = "updating";
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
       const upgrade = await installPythonPackages(["--upgrade", PACKAGE_SPEC], 1_800_000);
       if (upgrade.code !== 0)
         throw new Error(`headroom update failed: ${clip(upgrade.err.trim(), 300)}`);
@@ -545,7 +546,7 @@ async function doMaintainInstall(ctx, state, force) {
       state.version = await installedVersion();
       writeUpdateStamp({ checkedAt: Date.now(), latest: state.version });
       if (wasRocm) await repinRocmTorch();
-      const restarted = await restartProxy(ctx, state);
+      const restarted = await restartProxy(ctx, state, host);
       ctx?.ui?.notify?.(
         restarted
           ? `Headroom updated to ${state.version}; proxy restarted.`
@@ -559,7 +560,7 @@ async function doMaintainInstall(ctx, state, force) {
     state.installState = "";
     state.lastError = errorMessage(error);
   } finally {
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
   }
 }
 
@@ -578,7 +579,7 @@ async function systemdExecStartMatches() {
   }
 }
 
-async function reconcileProxyVersion(ctx, state) {
+async function reconcileProxyVersion(ctx, state, _host: Host = "omp") {
   if (!AUTOUPDATE || !state.proxyReady) return;
   try {
     const response = await fetch(proxyPath("/livez"), {
@@ -827,8 +828,8 @@ function headroomTestToolContent() {
   ).join("\n");
 }
 
-async function runHeadroomCompression(content, ctx, state) {
-  await ensureProxy(ctx, state, 10_000);
+async function runHeadroomCompression(content, ctx, state, host: Host = "omp") {
+  await ensureProxy(ctx, state, 10_000, host);
   const callId = "headroom_manual_compress";
   const messages = [
     { role: "user", content: "Compress this content for token-efficient reasoning." },
@@ -859,7 +860,7 @@ async function runHeadroomCompression(content, ctx, state) {
       : 0;
   if (persisted) recordCompression(state, "tool", result, ctx);
   state.lastError = "";
-  refreshStatsAndRender(ctx, state);
+  refreshStatsAndRender(ctx, state, host);
   return {
     compressed: persisted ? candidate : undefined,
     details: {
@@ -925,7 +926,7 @@ function seedHeadroomCompactionTranscript(sessionManager) {
   );
 }
 
-async function createHeadroomTranscriptFixture(ctx, state, surface) {
+async function createHeadroomTranscriptFixture(ctx, state, surface, host: Host = "omp") {
   const selected = String(surface || "")
     .trim()
     .toLowerCase();
@@ -936,7 +937,7 @@ async function createHeadroomTranscriptFixture(ctx, state, surface) {
   if (selected === "tool") {
     const source = headroomTestToolContent();
     try {
-      const result = await runHeadroomCompression(source, ctx, state);
+      const result = await runHeadroomCompression(source, ctx, state, host);
       if (typeof result.compressed !== "string") {
         return { error: "proxy returned no shorter retrievable Headroom result" };
       }
@@ -1595,10 +1596,10 @@ function recordCompression(state, kind, result, ctx) {
 // Fire-and-forget stats refresh + widget repaint for hook paths: the provider
 // request must not wait on a 3s stats GET. fetchStats never rejects; the paint
 // is guarded so a render bug cannot become an unhandled rejection.
-function refreshStatsAndRender(ctx, state) {
+function refreshStatsAndRender(ctx, state, host: Host = "omp") {
   void fetchStats(state).then(() => {
     try {
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
     } catch {
       // Painting is best-effort.
     }
@@ -1648,14 +1649,14 @@ async function fetchStats(state, force = false, timeoutMs = 3000) {
   return inFlight;
 }
 
-async function ensureProxy(ctx, state, waitMs = 0) {
+async function ensureProxy(ctx, state, waitMs = 0, host: Host = "omp") {
   const now = Date.now();
   if (state.proxyReady && now - state.proxyCheckedAt < READY_TTL_MS) return true;
   if (await isProxyReady()) {
     state.proxyReady = true;
     state.proxyStarting = false;
     state.proxyCheckedAt = Date.now();
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
     return true;
   }
 
@@ -1672,12 +1673,12 @@ async function ensureProxy(ctx, state, waitMs = 0) {
         state.proxyStarting = false;
         state.proxyCheckedAt = Date.now();
         await fetchStats(state, true);
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         return true;
       }
       await sleep(500);
     }
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
     return false;
   }
 
@@ -1685,7 +1686,7 @@ async function ensureProxy(ctx, state, waitMs = 0) {
   if (!state.proxyStarting && !state.proxyProcess) {
     if (!existsSync(HEADROOM_BIN)) {
       state.lastError = `Headroom binary missing: ${HEADROOM_BIN}`;
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
       return false;
     }
     state.proxyStarting = true;
@@ -1737,12 +1738,12 @@ async function ensureProxy(ctx, state, waitMs = 0) {
       state.proxyStarting = false;
       state.proxyCheckedAt = Date.now();
       await fetchStats(state, true);
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
       return true;
     }
     await sleep(500);
   }
-  renderWidget(ctx, state);
+  renderWidget(ctx, state, host);
   return false;
 }
 
@@ -1767,14 +1768,15 @@ export async function connectWithRetry(
   ctx: HeadroomCtx,
   state: HeadroomState,
   opts: ConnectRetryOptions = {},
+  host: Host = "omp",
 ) {
   const probe =
     opts.probe ??
     (async (c, s, ms) => {
-      await ensureProxy(c, s, ms);
+      await ensureProxy(c, s, ms, host);
       return (await getLivez())?.alive === true;
     });
-  const onRender = opts.onRender ?? renderWidget;
+  const onRender = opts.onRender ?? ((c, s) => renderWidget(c, s, host));
   const sleepMs = opts.sleep ?? ((ms) => sleep(ms));
   state.connectAttempt = 0;
   state.connectExhausted = false;
@@ -1808,13 +1810,19 @@ export async function connectWithRetry(
 }
 
 export default function headroomExtension(pi: ExtensionAPI) {
+  // Host tag: "omp" (default) or "pi". Set by entry files (src/index.ts for
+  // OMP, src/pi-entry.ts for Pi) via `pi[HEADROOM_HOST]`. Branch below on host
+  // for OMP-only API surfaces (setLabel, session.compacting, widget_layout,
+  // zod-based registerTool) and to swap the widget render target. Tests pass
+  // plain stubs without the symbol → host stays "omp".
+  const host: Host = readHost(pi);
   // pi.zod IS the zod module object (loader sets `readonly zod = z`), so
-  // `pi.zod.object` exists directly. Older shims exposed it as `{ z }`. Accept
-  // either, and never throw at registration when it is absent.
-  const legacyZod = pi.zod as unknown as { z?: typeof pi.zod };
-  const z = legacyZod.z ?? pi.zod;
+  // `pi.zod.object` exists directly. Older shims exposed it as `{ z }`. Pi
+  // doesn't expose zod at all (uses typebox for tools), so guard for undefined.
+  const legacyZod = pi.zod as unknown as { z?: typeof pi.zod } | undefined;
+  const z: unknown = legacyZod?.z ?? legacyZod;
   const toolRegistrar = pi as unknown as ExtensionToolRegistrar;
-  pi.setLabel?.("Headroom");
+  if (host === "omp") pi.setLabel?.("Headroom");
   let latestCtx: ExtensionContext | undefined;
   let rainbowTimer: NodeJS.Timeout | undefined;
   let widgetOnScreen = true; // updated by widget_layout event
@@ -1856,11 +1864,11 @@ export default function headroomExtension(pi: ExtensionAPI) {
       if (isMainUi && state.proxyReady && now - (state.statsFetchedAt || 0) > 5_000) {
         void fetchStats(state).then(() => {
           try {
-            renderWidget(ctx, state);
+            renderWidget(ctx, state, host);
           } catch {}
         });
       }
-      if (dirty) renderWidget(ctx, state);
+      if (dirty) renderWidget(ctx, state, host);
     }, RAINBOW_MS);
     // unref removed: it can cause the timer to be skipped in idle moments,
     // which freezes the rainbow animation. Keeping the process alive is fine
@@ -1936,17 +1944,17 @@ export default function headroomExtension(pi: ExtensionAPI) {
     // it transforms only the outbound provider payload, never the transcript.
     state.enabled = pi.getFlag?.("headroom") !== false && process.env.OMP_HEADROOM_DISABLED !== "1";
     startRainbowTimer();
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
     void (async () => {
-      if (!existsSync(HEADROOM_BIN)) await maintainInstall(ctx, state);
-      await connectWithRetry(ctx, state);
-      await maintainInstall(ctx, state);
-      await reconcileProxyVersion(ctx, state);
+      if (!existsSync(HEADROOM_BIN)) await maintainInstall(ctx, state, undefined, host);
+      await connectWithRetry(ctx, state, undefined, host);
+      await maintainInstall(ctx, state, undefined, host);
+      await reconcileProxyVersion(ctx, state, host);
       // Load accumulated per-project stats immediately so a resumed session
       // (omp --resume) shows its prior totals instead of zeroes until the
       // first request. The proxy persists per_project[sessionId].
       await fetchStats(state, true);
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
     })();
   });
 
@@ -1963,7 +1971,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
   pi.on("session_compact", async (_event, ctx) => {
     if (!isMainSession(ctx)) return;
     state.ompCompactions = (state.ompCompactions || 0) + 1;
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
   });
   // Provider-native prompt cache telemetry. OMP normalizes cache usage on the
   // finalized assistant message, so this observes the real provider response
@@ -1975,7 +1983,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
     state.cacheInputTokens += Math.max(0, asNumber(usage?.input));
     state.cacheReadTokens += Math.max(0, asNumber(usage?.cacheRead));
     state.cacheWriteTokens += Math.max(0, asNumber(usage?.cacheWrite));
-    renderWidget(ctx, state);
+    renderWidget(ctx, state, host);
   });
   // Headroom-powered session compaction (hybrid architecture).
   // session.compacting fires ONLY when session_before_compact returned no
@@ -1986,54 +1994,56 @@ export default function headroomExtension(pi: ExtensionAPI) {
   // produces the clean narrative summary. Result: [rezumat semantic LLM]
   // + [originale CCR-retrievable], with NO raw markers in the rendered
   // summary (preserveData is non-rendered; prompt drives the LLM only).
-  pi.on("session.compacting", async (event, ctx) => {
-    if (!state.headroomCompactActive) return undefined;
-    try {
-      const messages = Array.isArray(event?.messages) ? event.messages : [];
-      if (messages.length === 0) return undefined;
-      const originalText = JSON.stringify(messages, null, 2);
-      const hash = createHash("sha256").update(originalText).digest("hex").slice(0, 24);
-      const persisted = await persistCcrByHash(hash, originalText, state, ctx);
-      if (persisted === 0) {
-        // Fail-closed: CCR archive failed → let OMP summarize natively
-        // without claiming an archive we couldn't persist.
-        pi.logger?.warn?.(
-          "headroom session.compacting: CCR archive failed; skipping headroom archival.",
-        );
+  if (host === "omp") {
+    pi.on("session.compacting", async (event, ctx) => {
+      if (!state.headroomCompactActive) return undefined;
+      try {
+        const messages = Array.isArray(event?.messages) ? event.messages : [];
+        if (messages.length === 0) return undefined;
+        const originalText = JSON.stringify(messages, null, 2);
+        const hash = createHash("sha256").update(originalText).digest("hex").slice(0, 24);
+        const persisted = await persistCcrByHash(hash, originalText, state, ctx);
+        if (persisted === 0) {
+          // Fail-closed: CCR archive failed → let OMP summarize natively
+          // without claiming an archive we couldn't persist.
+          pi.logger?.warn?.(
+            "headroom session.compacting: CCR archive failed; skipping headroom archival.",
+          );
+          return undefined;
+        }
+        state.lastCompactionCcrHash = hash;
+        return {
+          // `context` is ADDITIVE — appended to OMP's native compaction
+          // prompt (NOT a replacement). Preserves OMP's proven summary
+          // format/safety/budget while adding Headroom's fidelity bar.
+          context: [
+            "Headroom archival active: full originals of the summarized conversation are persisted and retrievable.",
+            `Full archived source — preserve this exact reference in the summary: Retrieve more: hash=${hash}`,
+            "Preserve every file path, identifier, decision, error, constraint, and tool result verbatim where they matter. This summary replaces the full history.",
+          ],
+          preserveData: {
+            headroomArchiveChars: originalText.length,
+            headroomArchived: true,
+            headroomCcrHash: hash,
+          },
+        };
+      } catch (error) {
+        pi.logger?.warn?.(`headroom session.compacting failed: ${errorMessage(error)}`);
         return undefined;
       }
-      state.lastCompactionCcrHash = hash;
-      return {
-        // `context` is ADDITIVE — appended to OMP's native compaction
-        // prompt (NOT a replacement). Preserves OMP's proven summary
-        // format/safety/budget while adding Headroom's fidelity bar.
-        context: [
-          "Headroom archival active: full originals of the summarized conversation are persisted and retrievable.",
-          `Full archived source — preserve this exact reference in the summary: Retrieve more: hash=${hash}`,
-          "Preserve every file path, identifier, decision, error, constraint, and tool result verbatim where they matter. This summary replaces the full history.",
-        ],
-        preserveData: {
-          headroomArchiveChars: originalText.length,
-          headroomArchived: true,
-          headroomCcrHash: hash,
-        },
-      };
-    } catch (error) {
-      pi.logger?.warn?.(`headroom session.compacting failed: ${errorMessage(error)}`);
-      return undefined;
-    }
-  });
-  (
-    pi as ExtensionAPI & {
-      on: (
-        event: "widget_layout",
-        handler: (event: { key: string; visible: boolean }) => void,
-      ) => void;
-    }
-  ).on("widget_layout", (e) => {
-    if (e.key !== EXTENSION_KEY) return;
-    widgetOnScreen = e.visible;
-  });
+    });
+    (
+      pi as ExtensionAPI & {
+        on: (
+          event: "widget_layout",
+          handler: (event: { key: string; visible: boolean }) => void,
+        ) => void;
+      }
+    ).on("widget_layout", (e) => {
+      if (e.key !== EXTENSION_KEY) return;
+      widgetOnScreen = e.visible;
+    });
+  }
 
   pi.on("before_provider_request", async (event, ctx) => {
     if (!state.enabled) return;
@@ -2136,13 +2146,13 @@ export default function headroomExtension(pi: ExtensionAPI) {
     let archiveFallback: unknown;
     try {
       if (Array.isArray(payload.input)) {
-        const ready = await ensureProxy(ctx, state, 1_000);
+        const ready = await ensureProxy(ctx, state, 1_000, host);
         const nextPayload = await compressResponsesPayload(payload, ctx, state, {
           providerReady: ready,
           debugSeq: seq,
         });
-        if (ready) refreshStatsAndRender(ctx, state);
-        else renderWidget(ctx, state);
+        if (ready) refreshStatsAndRender(ctx, state, host);
+        else renderWidget(ctx, state, host);
         return hr(nextPayload);
       }
 
@@ -2159,22 +2169,22 @@ export default function headroomExtension(pi: ExtensionAPI) {
             proxyReady: null,
           });
           state.lastError = "";
-          renderWidget(ctx, state);
+          renderWidget(ctx, state, host);
           return hr(archived ? workingPayload : undefined);
         }
-        const ready = await ensureProxy(ctx, state, 1_000);
+        const ready = await ensureProxy(ctx, state, 1_000, host);
         debugSizingDiagnostic(state, seq, {
           ...anthropicCompressionDiagnostic(workingPayload, ctx),
           candidate,
           proxyReady: ready,
         });
         if (!ready) {
-          renderWidget(ctx, state);
+          renderWidget(ctx, state, host);
           return hr(archived ? workingPayload : undefined);
         }
         const nextPayload = await compressAnthropicPayload(workingPayload, ctx, state);
         state.lastError = "";
-        refreshStatsAndRender(ctx, state);
+        refreshStatsAndRender(ctx, state, host);
         return hr(nextPayload);
       }
 
@@ -2185,12 +2195,12 @@ export default function headroomExtension(pi: ExtensionAPI) {
       const { messages: oaMessages, hadSystem } = toOpenAiPayloadMessages(workingPayload);
       if (!providerPayloadHasCompressionCandidate(workingPayload)) {
         state.lastError = "";
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         return hr(archived ? workingPayload : undefined);
       }
-      const ready = await ensureProxy(ctx, state, 1_000);
+      const ready = await ensureProxy(ctx, state, 1_000, host);
       if (!ready) {
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         return hr(archived ? workingPayload : undefined);
       }
       const result = await compressOpenAiMessages(
@@ -2203,7 +2213,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
       if (await persistHolisticCompression(result, oaMessages, state, ctx)) {
         recordCompression(state, "provider", result, ctx);
         state.lastError = "";
-        refreshStatsAndRender(ctx, state);
+        refreshStatsAndRender(ctx, state, host);
         return hr(applyOpenAiCompressionResult(result, workingPayload, hadSystem));
       }
       return hr(archived ? workingPayload : undefined);
@@ -2212,15 +2222,17 @@ export default function headroomExtension(pi: ExtensionAPI) {
       pi.logger?.warn?.(`headroom before_provider_request failed: ${state.lastError}`);
       // A committed archive is already smaller and retrievable, so preserve it
       // even when the later proxy-compression stage fails.
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
       return hr(archiveFallback);
     }
   });
 
-  // Tool registration needs zod for parameter schemas. If zod is unavailable
-  // (older host), skip the tools but never let it abort the whole extension —
+  // Tool registration needs zod for parameter schemas. Pi uses typebox instead
+  // of zod, so skip these tools on Pi (feature gap — manual headroom_compress
+  // and headroom_retrieve are OMP-only). If zod is also unavailable on the
+  // OMP host, skip the tools but never let it abort the whole extension —
   // the widget + compression hooks must still load.
-  if (z) {
+  if (z && host === "omp") {
     toolRegistrar.registerTool({
       name: RETRIEVE_TOOL,
       label: "Headroom Retrieve",
@@ -2234,7 +2246,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
         query: z.string().optional().describe("Optional search query to filter original content."),
       }),
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        await ensureProxy(ctx, state, 5_000);
+        await ensureProxy(ctx, state, 5_000, host);
         let data: Record<string, unknown>;
         try {
           const retrieved = await retrieveViaProxy(
@@ -2258,7 +2270,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
           }
         }
         state.ccrHashes += 1;
-        refreshStatsAndRender(ctx, state);
+        refreshStatsAndRender(ctx, state, host);
         return {
           content: [{ type: "text", text: stringifyRetrieveResult(data, params.hash, fallback) }],
           isError: !!data.error,
@@ -2276,7 +2288,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
         content: z.string().describe("Text, JSON, logs, code, or search results to compress."),
       }),
       async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-        const result = await runHeadroomCompression(params.content, ctx, state);
+        const result = await runHeadroomCompression(params.content, ctx, state, host);
         return {
           content: [
             {
@@ -2295,9 +2307,9 @@ export default function headroomExtension(pi: ExtensionAPI) {
       description: "Show Headroom compression statistics for this OMP session and proxy.",
       parameters: z.object({}),
       async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
-        await ensureProxy(ctx, state, 3_000);
+        await ensureProxy(ctx, state, 3_000, host);
         await fetchStats(state, true);
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         return {
           content: [{ type: "text", text: commandSummary(state) }],
           details: state.stats || {},
@@ -2319,7 +2331,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
 
       if (action === "on") {
         state.enabled = true;
-        await ensureProxy(ctx, state, 25_000);
+        await ensureProxy(ctx, state, 25_000, host);
         ctx.ui.notify("Headroom enabled.", "info");
       } else if (action === "off") {
         state.enabled = false;
@@ -2378,7 +2390,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
             "warn",
           );
         } else {
-          await manageHeadroomUserService(serviceAction, ctx, state);
+          await manageHeadroomUserService(serviceAction, ctx, state, host);
         }
       } else if (action === "version") {
         const proxyVer = state.version || "?";
@@ -2465,7 +2477,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
           "info",
         );
       } else if (action === "start") {
-        await ensureProxy(ctx, state, 25_000);
+        await ensureProxy(ctx, state, 25_000, host);
         ctx.ui.notify(
           state.proxyReady ? "Headroom proxy ready." : "Headroom proxy is still starting.",
           "info",
@@ -2478,7 +2490,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
         state.proxyStarting = false;
         ctx.ui.notify("Headroom proxy stopped.", "info");
       } else if (action === "restart") {
-        const restarted = await restartProxy(ctx, state);
+        const restarted = await restartProxy(ctx, state, host);
         ctx.ui.notify(
           restarted
             ? "Headroom proxy restarted."
@@ -2497,16 +2509,16 @@ export default function headroomExtension(pi: ExtensionAPI) {
       } else if (action === "update") {
         state.lastError = "";
         state.installState = "updating";
-        renderWidget(ctx, state);
+        renderWidget(ctx, state, host);
         // Auto-clear "updating" after 45s even if the process hangs
         // (matches the lock stale timeout / observed install duration).
         const clearTimer = setTimeout(() => {
           if (state.installState) {
             state.installState = "";
-            renderWidget(ctx, state);
+            renderWidget(ctx, state, host);
           }
         }, UPDATE_AUTO_CLEAR_MS);
-        await maintainInstall(ctx, state, true);
+        await maintainInstall(ctx, state, true, host);
         // Unconditionally clear "updating": maintainInstall early-returns on
         // up-to-date (no version change) or lock-held without touching
         // installState, so relying on it leaves the indicator stuck forever.
@@ -2526,7 +2538,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
           const lines = commandHelpLines();
           ctx.ui.notify(`Headroom commands:\n${lines.join("\n")}`, "info");
         } else {
-          await ensureProxy(ctx, state, 3_000);
+          await ensureProxy(ctx, state, 3_000, host);
           await fetchStats(state, true);
           ctx.ui.notify(commandSummary(state), "info");
         }
@@ -2535,7 +2547,7 @@ export default function headroomExtension(pi: ExtensionAPI) {
         const lines = commandHelpLines();
         ctx.ui.notify(`Unknown command "${action}". Available:\n${lines.join("\n")}`, "info");
       }
-      renderWidget(ctx, state);
+      renderWidget(ctx, state, host);
     },
   };
   pi.registerCommand("headroom", headroomCommand);
