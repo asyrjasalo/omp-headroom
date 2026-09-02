@@ -6,8 +6,12 @@
 // type, and externalizes OMP's package so jiti resolves it from this project's
 // node_modules if needed (the factory never touches OMP imports at runtime —
 // only at type-check time).
+//
+// Also refreshes `.pi/extensions/omp-headroom.js` so plain `pi` invocations in
+// this repo pick up the rebuilt entry (project-local extensions directory
+// resolves at startup; the canonical npm/git install path uses dist-pi/).
 import { build } from "bun";
-import { mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 
 mkdirSync("./dist-pi", { recursive: true });
 
@@ -27,4 +31,15 @@ if (!result.success) {
 	for (const log of result.logs) console.error(log);
 	process.exit(1);
 }
-console.log(`build:pi → dist-pi/pi-entry.js (${result.outputs.length} file)`);
+
+// Mirror the bundle into .pi/extensions/ for project-local auto-discovery.
+// Skip silently if the directory doesn't exist (e.g. npm tarball consumers
+// don't need it). Overwrite whatever's there — symlink or older copy.
+const extDir = "./.pi/extensions";
+const extPath = `${extDir}/omp-headroom.js`;
+if (existsSync(extDir)) {
+	copyFileSync("./dist-pi/pi-entry.js", extPath);
+	console.log(`build:pi → dist-pi/pi-entry.js, .pi/extensions/omp-headroom.js`);
+} else {
+	console.log(`build:pi → dist-pi/pi-entry.js (no .pi/extensions/, skipping mirror)`);
+}
