@@ -75,6 +75,8 @@ Install in Pi:
 pi install github:DarkPhilosophy/omp-headroom
 ```
 
+No `postinstall` (or any install-time lifecycle) script ships in this package — `pi install` is pure dependency resolution. The Pi extension entry is pre-bundled at `dist-pi/pi-entry.js` and committed; nothing runs at install beyond the host fetching peer deps (`@earendil-works/pi-coding-agent`, `@oh-my-pi/pi-coding-agent`).
+
 Or activate for a single checkout via the conventional project-local extensions directory:
 
 ```bash

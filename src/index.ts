@@ -110,7 +110,6 @@ import {
 } from "./util.ts";
 import {
   archiveSavingsPercent,
-  buildWidgetLines,
   cacheUsageLine,
   commandSummary,
   localCompressionLine,
