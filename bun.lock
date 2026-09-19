@@ -12,7 +12,6 @@
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
-        "@earendil-works/pi-coding-agent": "^0.84.0",
         "@oh-my-pi/pi-coding-agent": "^16.4.4 || ^17.0.0",
       },
     },
