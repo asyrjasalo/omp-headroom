@@ -12,7 +12,17 @@ var __export = (target, all) => {
       set: __exportSetter.bind(all, name)
     });
 };
-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
+var __esm = (fn, res, err) => () => {
+  if (fn)
+    try {
+      res = fn(fn = 0);
+    } catch (e) {
+      err = [e];
+    }
+  if (err)
+    throw err[0];
+  return res;
+};
 
 // node_modules/typebox/build/system/memory/metrics.mjs
 var Metrics;
@@ -34,156 +44,7 @@ function Assign(left, right) {
 var init_assign = __esm(() => {
   init_metrics();
 });
-
-// node_modules/typebox/build/guard/string.mjs
-function IsBetween(value, min, max) {
-  return value >= min && value <= max;
-}
-function IsZeroWidthJoiner(value) {
-  return value === 8205;
-}
-function IsHighSurrogate(value) {
-  return IsBetween(value, 55296, 56319);
-}
-function IsRegionalIndicator(value) {
-  return IsBetween(value, 127462, 127487);
-}
-function IsVariationSelector(value) {
-  return IsBetween(value, 65024, 65039);
-}
-function IsCombiningMark(value) {
-  return IsBetween(value, 768, 879) || IsBetween(value, 6832, 6911) || IsBetween(value, 7616, 7679) || IsBetween(value, 65056, 65071);
-}
-function CodePointLength(value) {
-  return value > 65535 ? 2 : 1;
-}
-function ConsumeModifiers(value, index) {
-  while (index < value.length) {
-    const point = value.codePointAt(index);
-    if (IsCombiningMark(point) || IsVariationSelector(point)) {
-      index += CodePointLength(point);
-    } else {
-      break;
-    }
-  }
-  return index;
-}
-function NextGraphemeClusterIndex(value, clusterStart) {
-  const startCP = value.codePointAt(clusterStart);
-  let clusterEnd = clusterStart + CodePointLength(startCP);
-  clusterEnd = ConsumeModifiers(value, clusterEnd);
-  while (clusterEnd < value.length - 1 && value[clusterEnd] === "‍") {
-    const nextCP = value.codePointAt(clusterEnd + 1);
-    clusterEnd += 1 + CodePointLength(nextCP);
-    clusterEnd = ConsumeModifiers(value, clusterEnd);
-  }
-  if (IsRegionalIndicator(startCP) && clusterEnd < value.length && IsRegionalIndicator(value.codePointAt(clusterEnd))) {
-    clusterEnd += CodePointLength(value.codePointAt(clusterEnd));
-  }
-  return clusterEnd;
-}
-function IsGraphemeCodePoint(value) {
-  return IsHighSurrogate(value) || IsCombiningMark(value) || IsVariationSelector(value) || IsZeroWidthJoiner(value);
-}
-function GraphemeCount(value) {
-  let count = 0;
-  let index = 0;
-  while (index < value.length) {
-    index = NextGraphemeClusterIndex(value, index);
-    count++;
-  }
-  return count;
-}
-function IsMinLength(value, minLength) {
-  if (minLength === 0)
-    return true;
-  let count = 0;
-  let index = 0;
-  while (index < value.length) {
-    index = NextGraphemeClusterIndex(value, index);
-    count++;
-    if (count >= minLength)
-      return true;
-  }
-  return false;
-}
-function IsMaxLength(value, maxLength) {
-  let count = 0;
-  let index = 0;
-  while (index < value.length) {
-    index = NextGraphemeClusterIndex(value, index);
-    count++;
-    if (count > maxLength)
-      return false;
-  }
-  return true;
-}
-function IsMinLengthFast(value, minLength) {
-  if (minLength === 0)
-    return true;
-  let index = 0;
-  while (index < value.length) {
-    if (IsGraphemeCodePoint(value.charCodeAt(index))) {
-      return IsMinLength(value, minLength);
-    }
-    index++;
-    if (index >= minLength)
-      return true;
-  }
-  return false;
-}
-function IsMaxLengthFast(value, maxLength) {
-  let index = 0;
-  while (index < value.length) {
-    if (IsGraphemeCodePoint(value.charCodeAt(index))) {
-      return IsMaxLength(value, maxLength);
-    }
-    index++;
-    if (index > maxLength)
-      return false;
-  }
-  return true;
-}
-
 // node_modules/typebox/build/guard/guard.mjs
-var exports_guard = {};
-__export(exports_guard, {
-  Entries: () => Entries,
-  EntriesRegExp: () => EntriesRegExp,
-  Every: () => Every,
-  EveryAll: () => EveryAll,
-  GraphemeCount: () => GraphemeCount2,
-  HasPropertyKey: () => HasPropertyKey,
-  IsArray: () => IsArray,
-  IsBigInt: () => IsBigInt,
-  IsBoolean: () => IsBoolean,
-  IsClassInstance: () => IsClassInstance,
-  IsConstructor: () => IsConstructor,
-  IsDeepEqual: () => IsDeepEqual,
-  IsEqual: () => IsEqual,
-  IsFunction: () => IsFunction,
-  IsGreaterEqualThan: () => IsGreaterEqualThan,
-  IsGreaterThan: () => IsGreaterThan,
-  IsInteger: () => IsInteger,
-  IsLessEqualThan: () => IsLessEqualThan,
-  IsLessThan: () => IsLessThan,
-  IsMaxLength: () => IsMaxLength2,
-  IsMinLength: () => IsMinLength2,
-  IsMultipleOf: () => IsMultipleOf,
-  IsNull: () => IsNull,
-  IsNumber: () => IsNumber,
-  IsObject: () => IsObject,
-  IsObjectNotArray: () => IsObjectNotArray,
-  IsString: () => IsString,
-  IsSymbol: () => IsSymbol,
-  IsUndefined: () => IsUndefined,
-  IsUnsafePropertyKey: () => IsUnsafePropertyKey,
-  IsValueLike: () => IsValueLike,
-  Keys: () => Keys,
-  ShiftLeft: () => ShiftLeft,
-  Symbols: () => Symbols,
-  Values: () => Values
-});
 function IsArray(value) {
   return Array.isArray(value);
 }
@@ -193,21 +54,8 @@ function IsBigInt(value) {
 function IsBoolean(value) {
   return IsEqual(typeof value, "boolean");
 }
-function IsConstructor(value) {
-  if (IsUndefined(value) || !IsFunction(value))
-    return false;
-  const result = Function.prototype.toString.call(value);
-  if (/^class\s/.test(result))
-    return true;
-  if (/\[native code\]/.test(result))
-    return true;
-  return false;
-}
 function IsFunction(value) {
   return IsEqual(typeof value, "function");
-}
-function IsInteger(value) {
-  return Number.isInteger(value);
 }
 function IsNull(value) {
   return IsEqual(value, null);
@@ -224,38 +72,11 @@ function IsObject(value) {
 function IsString(value) {
   return IsEqual(typeof value, "string");
 }
-function IsSymbol(value) {
-  return IsEqual(typeof value, "symbol");
-}
-function IsUndefined(value) {
-  return IsEqual(value, undefined);
-}
 function IsEqual(left, right) {
   return left === right;
 }
 function IsGreaterThan(left, right) {
   return left > right;
-}
-function IsLessThan(left, right) {
-  return left < right;
-}
-function IsLessEqualThan(left, right) {
-  return left <= right;
-}
-function IsGreaterEqualThan(left, right) {
-  return left >= right;
-}
-function IsMultipleOf(dividend, divisor) {
-  if (IsBigInt(dividend) || IsBigInt(divisor)) {
-    return BigInt(dividend) % BigInt(divisor) === 0n;
-  }
-  const tolerance = 0.0000000001;
-  if (!IsNumber(dividend))
-    return true;
-  if (IsInteger(dividend) && 1 / divisor % 1 === 0)
-    return true;
-  const mod = dividend % divisor;
-  return Math.min(Math.abs(mod), Math.abs(mod - divisor), Math.abs(mod + divisor)) < tolerance;
 }
 function IsClassInstance(value) {
   if (!IsObject(value))
@@ -265,32 +86,12 @@ function IsClassInstance(value) {
     return false;
   return IsEqual(typeof proto.constructor, "function") && !(IsEqual(proto.constructor, globalThis.Object) || IsEqual(proto.constructor.name, "Object"));
 }
-function IsValueLike(value) {
-  return IsBigInt(value) || IsBoolean(value) || IsNull(value) || IsNumber(value) || IsString(value) || IsUndefined(value);
-}
-function GraphemeCount2(value) {
-  return GraphemeCount(value);
-}
-function IsMaxLength2(value, length) {
-  return IsMaxLengthFast(value, length);
-}
-function IsMinLength2(value, length) {
-  return IsMinLengthFast(value, length);
-}
 function Every(value, offset, callback) {
   for (let index = offset;index < value.length; index++) {
     if (!callback(value[index], index))
       return false;
   }
   return true;
-}
-function EveryAll(value, offset, callback) {
-  let result = true;
-  for (let index = offset;index < value.length; index++) {
-    if (!callback(value[index], index))
-      result = false;
-  }
-  return result;
 }
 function ShiftLeft(array, true_, false_) {
   return IsEqual(array.length, 0) ? false_() : true_(array[0], array.slice(1));
@@ -301,12 +102,6 @@ function IsUnsafePropertyKey(key) {
 function HasPropertyKey(value, key) {
   return IsUnsafePropertyKey(key) ? Object.prototype.hasOwnProperty.call(value, key) : (key in value);
 }
-function EntriesRegExp(value) {
-  return Keys(value).map((key) => [new RegExp(`^${key}$`), value[key]]);
-}
-function Entries(value) {
-  return Object.entries(value);
-}
 function Keys(value) {
   return Object.getOwnPropertyNames(value);
 }
@@ -316,18 +111,6 @@ function Symbols(value) {
 function Values(value) {
   return Object.values(value);
 }
-function DeepEqualObject(left, right) {
-  if (!IsObject(right))
-    return false;
-  const keys = Keys(left);
-  return IsEqual(keys.length, Keys(right).length) && keys.every((key) => IsDeepEqual(left[key], right[key]));
-}
-function DeepEqualArray(left, right) {
-  return IsArray(right) && IsEqual(left.length, right.length) && left.every((_, index) => IsDeepEqual(left[index], right[index]));
-}
-function IsDeepEqual(left, right) {
-  return IsArray(left) ? DeepEqualArray(left, right) : IsObject(left) ? DeepEqualObject(left, right) : IsEqual(left, right);
-}
 var init_guard = () => {};
 
 // node_modules/typebox/build/guard/emit.mjs
@@ -336,78 +119,11 @@ var init_emit = __esm(() => {
 });
 
 // node_modules/typebox/build/guard/globals.mjs
-var exports_globals = {};
-__export(exports_globals, {
-  IsBigInt64Array: () => IsBigInt64Array,
-  IsBigUint64Array: () => IsBigUint64Array,
-  IsBoolean: () => IsBoolean2,
-  IsDate: () => IsDate,
-  IsFloat32Array: () => IsFloat32Array,
-  IsFloat64Array: () => IsFloat64Array,
-  IsInt16Array: () => IsInt16Array,
-  IsInt32Array: () => IsInt32Array,
-  IsInt8Array: () => IsInt8Array,
-  IsMap: () => IsMap,
-  IsNumber: () => IsNumber2,
-  IsRegExp: () => IsRegExp,
-  IsSet: () => IsSet,
-  IsString: () => IsString2,
-  IsTypeArray: () => IsTypeArray,
-  IsUint16Array: () => IsUint16Array,
-  IsUint32Array: () => IsUint32Array,
-  IsUint8Array: () => IsUint8Array,
-  IsUint8ClampedArray: () => IsUint8ClampedArray
-});
-function IsBoolean2(value) {
-  return value instanceof Boolean;
-}
-function IsNumber2(value) {
-  return value instanceof Number;
-}
-function IsString2(value) {
-  return value instanceof String;
-}
 function IsTypeArray(value) {
   return globalThis.ArrayBuffer.isView(value);
 }
-function IsInt8Array(value) {
-  return value instanceof globalThis.Int8Array;
-}
-function IsUint8Array(value) {
-  return value instanceof globalThis.Uint8Array;
-}
-function IsUint8ClampedArray(value) {
-  return value instanceof globalThis.Uint8ClampedArray;
-}
-function IsInt16Array(value) {
-  return value instanceof globalThis.Int16Array;
-}
-function IsUint16Array(value) {
-  return value instanceof globalThis.Uint16Array;
-}
-function IsInt32Array(value) {
-  return value instanceof globalThis.Int32Array;
-}
-function IsUint32Array(value) {
-  return value instanceof globalThis.Uint32Array;
-}
-function IsFloat32Array(value) {
-  return value instanceof globalThis.Float32Array;
-}
-function IsFloat64Array(value) {
-  return value instanceof globalThis.Float64Array;
-}
-function IsBigInt64Array(value) {
-  return value instanceof globalThis.BigInt64Array;
-}
-function IsBigUint64Array(value) {
-  return value instanceof globalThis.BigUint64Array;
-}
 function IsRegExp(value) {
   return value instanceof globalThis.RegExp;
-}
-function IsDate(value) {
-  return value instanceof globalThis.Date;
 }
 function IsSet(value) {
   return value instanceof globalThis.Set;
@@ -434,16 +150,16 @@ function FromClassInstance(value) {
   return value;
 }
 function IsTypeObject(value) {
-  return exports_guard.HasPropertyKey(value, "~kind") || exports_guard.HasPropertyKey(value, "~unsafe");
+  return HasPropertyKey(value, "~kind") || HasPropertyKey(value, "~unsafe");
 }
 function FromTypeObject(value) {
   const result = {};
   const descriptors = Object.getOwnPropertyDescriptors(value);
   for (const key of Object.keys(descriptors)) {
-    if (exports_guard.IsUnsafePropertyKey(key))
+    if (IsUnsafePropertyKey(key))
       continue;
     const descriptor = descriptors[key];
-    if (exports_guard.HasPropertyKey(descriptor, "value")) {
+    if (HasPropertyKey(descriptor, "value")) {
       Object.defineProperty(result, key, { ...descriptor, value: FromValue(descriptor.value) });
     }
   }
@@ -451,18 +167,18 @@ function FromTypeObject(value) {
 }
 function FromPlainObject(value) {
   const result = {};
-  for (const key of exports_guard.Keys(value)) {
-    if (exports_guard.IsUnsafePropertyKey(key))
+  for (const key of Keys(value)) {
+    if (IsUnsafePropertyKey(key))
       continue;
     result[key] = FromValue(value[key]);
   }
-  for (const key of exports_guard.Symbols(value)) {
+  for (const key of Symbols(value)) {
     result[key] = FromValue(value[key]);
   }
   return result;
 }
 function FromObject(value) {
-  return exports_guard.IsClassInstance(value) ? FromClassInstance(value) : IsTypeObject(value) ? FromTypeObject(value) : FromPlainObject(value);
+  return IsClassInstance(value) ? FromClassInstance(value) : IsTypeObject(value) ? FromTypeObject(value) : FromPlainObject(value);
 }
 function FromArray(value) {
   return value.map((element) => FromValue(element));
@@ -480,7 +196,7 @@ function FromSet(value) {
   return new Set(FromValue([...value.values()]));
 }
 function FromValue(value) {
-  return exports_globals.IsTypeArray(value) ? FromTypedArray(value) : exports_globals.IsRegExp(value) ? FromRegExp(value) : exports_globals.IsMap(value) ? FromMap(value) : exports_globals.IsSet(value) ? FromSet(value) : exports_guard.IsArray(value) ? FromArray(value) : exports_guard.IsObject(value) ? FromObject(value) : value;
+  return IsTypeArray(value) ? FromTypedArray(value) : IsRegExp(value) ? FromRegExp(value) : IsMap(value) ? FromMap(value) : IsSet(value) ? FromSet(value) : IsArray(value) ? FromArray(value) : IsObject(value) ? FromObject(value) : value;
 }
 function Clone(value) {
   Metrics.clone += 1;
@@ -492,29 +208,6 @@ var init_clone = __esm(() => {
 });
 
 // node_modules/typebox/build/system/settings/settings.mjs
-var exports_settings = {};
-__export(exports_settings, {
-  Get: () => Get,
-  Reset: () => Reset,
-  Set: () => Set2
-});
-function Reset() {
-  settings.immutableTypes = false;
-  settings.maxErrors = 8;
-  settings.useAcceleration = true;
-  settings.exactOptionalPropertyTypes = false;
-  settings.enumerableKind = false;
-  settings.correctiveParse = false;
-  settings.unionPrioritySort = true;
-}
-function Set2(options) {
-  for (const key of exports_guard.Keys(options)) {
-    const value = options[key];
-    if (value !== undefined) {
-      Object.defineProperty(settings, key, { value });
-    }
-  }
-}
 function Get() {
   return settings;
 }
@@ -554,10 +247,10 @@ function Merge(left, right) {
 }
 function Create(hidden, enumerable, options = {}) {
   Metrics.create += 1;
-  const settings2 = exports_settings.Get();
+  const settings = Get();
   const withOptions = Merge(enumerable, options);
-  const withHidden = settings2.enumerableKind ? Merge(withOptions, hidden) : MergeHidden(withOptions, hidden);
-  return settings2.immutableTypes ? Object.freeze(withHidden) : withHidden;
+  const withHidden = settings.enumerableKind ? Merge(withOptions, hidden) : MergeHidden(withOptions, hidden);
+  return settings.immutableTypes ? Object.freeze(withHidden) : withHidden;
 }
 var init_create = __esm(() => {
   init_settings2();
@@ -585,13 +278,13 @@ var init_discard = __esm(() => {
 // node_modules/typebox/build/system/memory/update.mjs
 function Update(current, hidden, enumerable) {
   Metrics.update += 1;
-  const settings2 = exports_settings.Get();
+  const settings = Get();
   const result = Clone(current);
   for (const key of Object.keys(hidden)) {
     Object.defineProperty(result, key, {
       configurable: true,
       writable: true,
-      enumerable: settings2.enumerableKind,
+      enumerable: settings.enumerableKind,
       value: hidden[key]
     });
   }
@@ -612,15 +305,6 @@ var init_update = __esm(() => {
 });
 
 // node_modules/typebox/build/system/memory/memory.mjs
-var exports_memory = {};
-__export(exports_memory, {
-  Assign: () => Assign,
-  Clone: () => Clone,
-  Create: () => Create,
-  Discard: () => Discard,
-  Metrics: () => Metrics,
-  Update: () => Update
-});
 var init_memory = __esm(() => {
   init_assign();
   init_clone();
@@ -637,10 +321,10 @@ var init_memory2 = __esm(() => {
 
 // node_modules/typebox/build/type/types/schema.mjs
 function IsKind(value, kind) {
-  return exports_guard.IsObject(value) && exports_guard.HasPropertyKey(value, "~kind") && exports_guard.IsEqual(value["~kind"], kind);
+  return IsObject(value) && HasPropertyKey(value, "~kind") && IsEqual(value["~kind"], kind);
 }
 function IsSchema(value) {
-  return exports_guard.IsObject(value);
+  return IsObject(value);
 }
 var init_schema = __esm(() => {
   init_guard2();
@@ -648,7 +332,7 @@ var init_schema = __esm(() => {
 
 // node_modules/typebox/build/type/types/deferred.mjs
 function Deferred(action, parameters, options) {
-  return exports_memory.Create({ "~kind": "Deferred" }, { type: "deferred", action, parameters, options }, {});
+  return Create({ "~kind": "Deferred" }, { type: "deferred", action, parameters, options }, {});
 }
 function IsDeferred(value) {
   return IsKind(value, "Deferred");
@@ -660,10 +344,10 @@ var init_deferred = __esm(() => {
 
 // node_modules/typebox/build/type/engine/readonly/instantiate_add.mjs
 function AddReadonlyOperation(type) {
-  return exports_memory.Update(type, { "~readonly": true }, {});
+  return Update(type, { "~readonly": true }, {});
 }
 function AddReadonlyAction(type, options) {
-  const result = exports_memory.Update(AddReadonlyOperation(type), {}, options);
+  const result = Update(AddReadonlyOperation(type), {}, options);
   return result;
 }
 function AddReadonlyInstantiate(context, state, type, options) {
@@ -677,10 +361,10 @@ var init_instantiate_add = __esm(() => {
 
 // node_modules/typebox/build/type/engine/optional/instantiate_add.mjs
 function AddOptionalOperation(type) {
-  return exports_memory.Update(type, { "~optional": true }, {});
+  return Update(type, { "~optional": true }, {});
 }
 function AddOptionalAction(type, options) {
-  const result = exports_memory.Update(AddOptionalOperation(type), {}, options);
+  const result = Update(AddOptionalOperation(type), {}, options);
   return result;
 }
 function AddOptionalInstantiate(context, state, type, options) {
@@ -694,13 +378,13 @@ var init_instantiate_add2 = __esm(() => {
 
 // node_modules/typebox/build/type/types/array.mjs
 function _Array_(items, options) {
-  return exports_memory.Create({ "~kind": "Array" }, { type: "array", items }, options);
+  return Create({ "~kind": "Array" }, { type: "array", items }, options);
 }
 function IsArray2(value) {
   return IsKind(value, "Array");
 }
 function ArrayOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "items"]);
+  return Discard(type, ["~kind", "type", "items"]);
 }
 var init_array = __esm(() => {
   init_memory2();
@@ -709,13 +393,13 @@ var init_array = __esm(() => {
 
 // node_modules/typebox/build/type/types/constructor.mjs
 function Constructor(parameters, instanceType, options = {}) {
-  return exports_memory.Create({ "~kind": "Constructor" }, { type: "constructor", parameters, instanceType }, options);
+  return Create({ "~kind": "Constructor" }, { type: "constructor", parameters, instanceType }, options);
 }
-function IsConstructor2(value) {
+function IsConstructor(value) {
   return IsKind(value, "Constructor");
 }
 function ConstructorOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "parameters", "instanceType"]);
+  return Discard(type, ["~kind", "type", "parameters", "instanceType"]);
 }
 var init_constructor = __esm(() => {
   init_memory2();
@@ -724,13 +408,13 @@ var init_constructor = __esm(() => {
 
 // node_modules/typebox/build/type/types/function.mjs
 function _Function_(parameters, returnType, options = {}) {
-  return exports_memory.Create({ ["~kind"]: "Function" }, { type: "function", parameters, returnType }, options);
+  return Create({ ["~kind"]: "Function" }, { type: "function", parameters, returnType }, options);
 }
 function IsFunction2(value) {
   return IsKind(value, "Function");
 }
 function FunctionOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "parameters", "returnType"]);
+  return Discard(type, ["~kind", "type", "parameters", "returnType"]);
 }
 var init_function = __esm(() => {
   init_memory2();
@@ -739,7 +423,7 @@ var init_function = __esm(() => {
 
 // node_modules/typebox/build/type/types/ref.mjs
 function Ref(ref, options) {
-  return exports_memory.Create({ ["~kind"]: "Ref" }, { $ref: ref }, options);
+  return Create({ ["~kind"]: "Ref" }, { $ref: ref }, options);
 }
 function IsRef(value) {
   return IsKind(value, "Ref");
@@ -751,7 +435,7 @@ var init_ref = __esm(() => {
 
 // node_modules/typebox/build/type/types/generic.mjs
 function Generic(parameters, expression) {
-  return exports_memory.Create({ "~kind": "Generic" }, { type: "generic", parameters, expression });
+  return Create({ "~kind": "Generic" }, { type: "generic", parameters, expression });
 }
 function IsGeneric(value) {
   return IsKind(value, "Generic");
@@ -763,7 +447,7 @@ var init_generic = __esm(() => {
 
 // node_modules/typebox/build/type/types/any.mjs
 function Any(options) {
-  return exports_memory.Create({ ["~kind"]: "Any" }, {}, options);
+  return Create({ ["~kind"]: "Any" }, {}, options);
 }
 function IsAny(value) {
   return IsKind(value, "Any");
@@ -775,7 +459,7 @@ var init_any = __esm(() => {
 
 // node_modules/typebox/build/type/types/never.mjs
 function Never(options) {
-  return exports_memory.Create({ "~kind": "Never" }, { not: {} }, options);
+  return Create({ "~kind": "Never" }, { not: {} }, options);
 }
 function IsNever(value) {
   return IsKind(value, "Never");
@@ -803,7 +487,7 @@ function Optional(type) {
   return AddOptional(type);
 }
 function IsOptional(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "~optional");
+  return IsSchema(value) && HasPropertyKey(value, "~optional");
 }
 var init__optional = __esm(() => {
   init_guard2();
@@ -813,13 +497,13 @@ var init__optional = __esm(() => {
 
 // node_modules/typebox/build/type/types/properties.mjs
 function RequiredArray(properties) {
-  return exports_guard.Keys(properties).filter((key) => !IsOptional(properties[key]));
+  return Keys(properties).filter((key) => !IsOptional(properties[key]));
 }
 function PropertyKeys(properties) {
-  return exports_guard.Keys(properties);
+  return Keys(properties);
 }
 function PropertyValues(properties) {
-  return exports_guard.Values(properties);
+  return Values(properties);
 }
 var init_properties = __esm(() => {
   init_guard2();
@@ -830,13 +514,13 @@ var init_properties = __esm(() => {
 function _Object_(properties, options = {}) {
   const requiredKeys = RequiredArray(properties);
   const required = requiredKeys.length > 0 ? { required: requiredKeys } : {};
-  return exports_memory.Create({ "~kind": "Object" }, { type: "object", ...required, properties }, options);
+  return Create({ "~kind": "Object" }, { type: "object", ...required, properties }, options);
 }
 function IsObject2(value) {
   return IsKind(value, "Object");
 }
 function ObjectOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "properties", "required"]);
+  return Discard(type, ["~kind", "type", "properties", "required"]);
 }
 var init_object = __esm(() => {
   init_memory2();
@@ -846,7 +530,7 @@ var init_object = __esm(() => {
 
 // node_modules/typebox/build/type/types/unknown.mjs
 function Unknown(options) {
-  return exports_memory.Create({ ["~kind"]: "Unknown" }, {}, options);
+  return Create({ ["~kind"]: "Unknown" }, {}, options);
 }
 function IsUnknown(value) {
   return IsKind(value, "Unknown");
@@ -858,16 +542,13 @@ var init_unknown = __esm(() => {
 
 // node_modules/typebox/build/type/types/cyclic.mjs
 function Cyclic($defs, $ref, options) {
-  const defs = exports_guard.Keys($defs).reduce((result, key) => {
-    return { ...result, [key]: exports_memory.Update($defs[key], {}, { $id: key }) };
+  const defs = Keys($defs).reduce((result, key) => {
+    return { ...result, [key]: Update($defs[key], {}, { $id: key }) };
   }, {});
-  return exports_memory.Create({ ["~kind"]: "Cyclic" }, { $defs: defs, $ref }, options);
+  return Create({ ["~kind"]: "Cyclic" }, { $defs: defs, $ref }, options);
 }
 function IsCyclic(value) {
   return IsKind(value, "Cyclic");
-}
-function CyclicOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "$defs", "$ref"]);
 }
 var init_cyclic = __esm(() => {
   init_guard2();
@@ -877,10 +558,10 @@ var init_cyclic = __esm(() => {
 
 // node_modules/typebox/build/type/types/unsafe.mjs
 function Unsafe(schema) {
-  return exports_memory.Update(schema, { ["~unsafe"]: null }, {});
+  return Update(schema, { ["~unsafe"]: null }, {});
 }
 function IsUnsafe(value) {
-  return exports_guard.IsObjectNotArray(value) && exports_guard.HasPropertyKey(value, "~unsafe") && exports_guard.IsNull(value["~unsafe"]);
+  return IsObjectNotArray(value) && HasPropertyKey(value, "~unsafe") && IsNull(value["~unsafe"]);
 }
 var init_unsafe = __esm(() => {
   init_guard2();
@@ -888,10 +569,6 @@ var init_unsafe = __esm(() => {
 });
 
 // node_modules/typebox/build/system/arguments/arguments.mjs
-var exports_arguments = {};
-__export(exports_arguments, {
-  Match: () => Match
-});
 function Match(args, match) {
   return match[args.length]?.(...args) ?? (() => {
     throw Error("Invalid Arguments");
@@ -903,11 +580,11 @@ var init_arguments = () => {};
 
 // node_modules/typebox/build/type/types/infer.mjs
 function Infer(...args) {
-  const [name, extends_] = exports_arguments.Match(args, {
-    2: (name2, extends_2) => [name2, extends_2, extends_2],
-    1: (name2) => [name2, Unknown(), Unknown()]
+  const [name, extends_] = Match(args, {
+    2: (name, extends_) => [name, extends_, extends_],
+    1: (name) => [name, Unknown(), Unknown()]
   });
-  return exports_memory.Create({ ["~kind"]: "Infer" }, { type: "infer", name, extends: extends_ }, {});
+  return Create({ ["~kind"]: "Infer" }, { type: "infer", name, extends: extends_ }, {});
 }
 function IsInfer(value) {
   return IsKind(value, "Infer");
@@ -921,13 +598,13 @@ var init_infer = __esm(() => {
 
 // node_modules/typebox/build/type/types/dependent.mjs
 function Dependent(if_, then_, else_, options = {}) {
-  return exports_memory.Create({ "~kind": "Dependent" }, { if: if_, then: then_, else: else_ }, options);
+  return Create({ "~kind": "Dependent" }, { if: if_, then: then_, else: else_ }, options);
 }
 function IsDependent(value) {
   return IsKind(value, "Dependent");
 }
 function DependentOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "if", "then", "else"]);
+  return Discard(type, ["~kind", "if", "then", "else"]);
 }
 var init_dependent = __esm(() => {
   init_memory2();
@@ -936,10 +613,10 @@ var init_dependent = __esm(() => {
 
 // node_modules/typebox/build/type/engine/enum/typescript_enum_to_enum_values.mjs
 function IsTypeScriptEnumLike(value) {
-  return exports_guard.IsObjectNotArray(value);
+  return IsObjectNotArray(value);
 }
 function TypeScriptEnumToEnumValues(type) {
-  const keys = exports_guard.Keys(type).filter((key) => isNaN(key));
+  const keys = Keys(type).filter((key) => isNaN(key));
   return keys.reduce((result, key) => [...result, type[key]], []);
 }
 var init_typescript_enum_to_enum_values = __esm(() => {
@@ -948,11 +625,11 @@ var init_typescript_enum_to_enum_values = __esm(() => {
 
 // node_modules/typebox/build/type/types/enum.mjs
 function IsEnumValue(value) {
-  return exports_guard.IsString(value) || exports_guard.IsNumber(value);
+  return IsString(value) || IsNumber(value);
 }
 function Enum(value, options) {
   const values = IsTypeScriptEnumLike(value) ? TypeScriptEnumToEnumValues(value) : value;
-  return exports_memory.Create({ "~kind": "Enum" }, { enum: values }, options);
+  return Create({ "~kind": "Enum" }, { enum: values }, options);
 }
 function IsEnum(value) {
   return IsKind(value, "Enum");
@@ -967,13 +644,13 @@ var init_enum = __esm(() => {
 
 // node_modules/typebox/build/type/types/intersect.mjs
 function Intersect(types, options = {}) {
-  return exports_memory.Create({ "~kind": "Intersect" }, { allOf: types }, options);
+  return Create({ "~kind": "Intersect" }, { allOf: types }, options);
 }
 function IsIntersect(value) {
   return IsKind(value, "Intersect");
 }
 function IntersectOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "allOf"]);
+  return Discard(type, ["~kind", "allOf"]);
 }
 var init_intersect = __esm(() => {
   init_memory2();
@@ -1009,21 +686,21 @@ var ByteMarker, Accumulator, Prime, Size, Bytes, F64, F64In, F64Out, encoder;
 var init_hash = __esm(() => {
   init_unreachable();
   init_guard2();
-  (function(ByteMarker2) {
-    ByteMarker2[ByteMarker2["Array"] = 0] = "Array";
-    ByteMarker2[ByteMarker2["BigInt"] = 1] = "BigInt";
-    ByteMarker2[ByteMarker2["Boolean"] = 2] = "Boolean";
-    ByteMarker2[ByteMarker2["Date"] = 3] = "Date";
-    ByteMarker2[ByteMarker2["Constructor"] = 4] = "Constructor";
-    ByteMarker2[ByteMarker2["Function"] = 5] = "Function";
-    ByteMarker2[ByteMarker2["Null"] = 6] = "Null";
-    ByteMarker2[ByteMarker2["Number"] = 7] = "Number";
-    ByteMarker2[ByteMarker2["Object"] = 8] = "Object";
-    ByteMarker2[ByteMarker2["RegExp"] = 9] = "RegExp";
-    ByteMarker2[ByteMarker2["String"] = 10] = "String";
-    ByteMarker2[ByteMarker2["Symbol"] = 11] = "Symbol";
-    ByteMarker2[ByteMarker2["TypeArray"] = 12] = "TypeArray";
-    ByteMarker2[ByteMarker2["Undefined"] = 13] = "Undefined";
+  (function(ByteMarker) {
+    ByteMarker[ByteMarker["Array"] = 0] = "Array";
+    ByteMarker[ByteMarker["BigInt"] = 1] = "BigInt";
+    ByteMarker[ByteMarker["Boolean"] = 2] = "Boolean";
+    ByteMarker[ByteMarker["Date"] = 3] = "Date";
+    ByteMarker[ByteMarker["Constructor"] = 4] = "Constructor";
+    ByteMarker[ByteMarker["Function"] = 5] = "Function";
+    ByteMarker[ByteMarker["Null"] = 6] = "Null";
+    ByteMarker[ByteMarker["Number"] = 7] = "Number";
+    ByteMarker[ByteMarker["Object"] = 8] = "Object";
+    ByteMarker[ByteMarker["RegExp"] = 9] = "RegExp";
+    ByteMarker[ByteMarker["String"] = 10] = "String";
+    ByteMarker[ByteMarker["Symbol"] = 11] = "Symbol";
+    ByteMarker[ByteMarker["TypeArray"] = 12] = "TypeArray";
+    ByteMarker[ByteMarker["Undefined"] = 13] = "Undefined";
   })(ByteMarker || (ByteMarker = {}));
   Accumulator = BigInt("14695981039346656037");
   [Prime, Size] = [BigInt("1099511628211"), BigInt("18446744073709551616")];
@@ -1078,7 +755,7 @@ class EncodeBuilder {
     const decode = IsCodec(type) ? (value) => this.decode(type["~codec"].decode(value)) : this.decode;
     const encode = IsCodec(type) ? (value) => type["~codec"].encode(callback(value)) : callback;
     const codec = { decode, encode };
-    return exports_memory.Update(this.type, { "~codec": codec }, {});
+    return Update(this.type, { "~codec": codec }, {});
   }
 }
 
@@ -1104,7 +781,7 @@ function Encode(type, callback) {
   }).Encode(callback);
 }
 function IsCodec(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "~codec") && exports_guard.IsObject(value["~codec"]) && exports_guard.HasPropertyKey(value["~codec"], "encode") && exports_guard.HasPropertyKey(value["~codec"], "decode");
+  return IsSchema(value) && HasPropertyKey(value, "~codec") && IsObject(value["~codec"]) && HasPropertyKey(value["~codec"], "encode") && HasPropertyKey(value["~codec"], "decode");
 }
 var init__codec = __esm(() => {
   init_system2();
@@ -1117,7 +794,7 @@ function Immutable(type) {
   return AddImmutable(type);
 }
 function IsImmutable(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "~immutable");
+  return IsSchema(value) && HasPropertyKey(value, "~immutable");
 }
 var init__immutable = __esm(() => {
   init_guard2();
@@ -1142,7 +819,7 @@ function Readonly(type) {
   return AddReadonly(type);
 }
 function IsReadonly(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "~readonly");
+  return IsSchema(value) && HasPropertyKey(value, "~readonly");
 }
 var init__readonly = __esm(() => {
   init_guard2();
@@ -1153,20 +830,20 @@ var init__readonly = __esm(() => {
 // node_modules/typebox/build/type/types/_refine.mjs
 function RefineAdd(type, refinement) {
   const refinements = IsRefine(type) ? [...type["~refine"], refinement] : [refinement];
-  return exports_memory.Update(type, { "~refine": refinements }, {});
+  return Update(type, { "~refine": refinements }, {});
 }
 function Refine(...args) {
-  const [type, check, error] = exports_arguments.Match(args, {
-    3: (type2, check2, error2) => [type2, check2, error2],
-    2: (type2, check2) => [type2, check2, () => "Refine Error"]
+  const [type, check, error] = Match(args, {
+    3: (type, check, error) => [type, check, error],
+    2: (type, check) => [type, check, () => "Refine Error"]
   });
   return RefineAdd(type, { check, error });
 }
 function IsRefinement(value) {
-  return exports_guard.IsObjectNotArray(value) && exports_guard.HasPropertyKey(value, "check") && exports_guard.HasPropertyKey(value, "error") && exports_guard.IsFunction(value.check) && exports_guard.IsFunction(value.error);
+  return IsObjectNotArray(value) && HasPropertyKey(value, "check") && HasPropertyKey(value, "error") && IsFunction(value.check) && IsFunction(value.error);
 }
 function IsRefine(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "~refine") && exports_guard.IsArray(value["~refine"]) && exports_guard.Every(value["~refine"], 0, (value2) => IsRefinement(value2));
+  return IsSchema(value) && HasPropertyKey(value, "~refine") && IsArray(value["~refine"]) && Every(value["~refine"], 0, (value) => IsRefinement(value));
 }
 var init__refine = __esm(() => {
   init_arguments();
@@ -1177,7 +854,7 @@ var init__refine = __esm(() => {
 
 // node_modules/typebox/build/type/types/bigint.mjs
 function BigInt2(options) {
-  return exports_memory.Create({ "~kind": "BigInt" }, { type: "bigint" }, options);
+  return Create({ "~kind": "BigInt" }, { type: "bigint" }, options);
 }
 function IsBigInt2(value) {
   return IsKind(value, "BigInt");
@@ -1190,9 +867,9 @@ var init_bigint = __esm(() => {
 
 // node_modules/typebox/build/type/types/boolean.mjs
 function Boolean2(options) {
-  return exports_memory.Create({ "~kind": "Boolean" }, { type: "boolean" }, options);
+  return Create({ "~kind": "Boolean" }, { type: "boolean" }, options);
 }
-function IsBoolean3(value) {
+function IsBoolean2(value) {
   return IsKind(value, "Boolean");
 }
 var init_boolean = __esm(() => {
@@ -1202,7 +879,7 @@ var init_boolean = __esm(() => {
 
 // node_modules/typebox/build/type/types/identifier.mjs
 function Identifier(name) {
-  return exports_memory.Create({ "~kind": "Identifier" }, { name });
+  return Create({ "~kind": "Identifier" }, { name });
 }
 function IsIdentifier(value) {
   return IsKind(value, "Identifier");
@@ -1214,7 +891,7 @@ var init_identifier = __esm(() => {
 
 // node_modules/typebox/build/type/types/integer.mjs
 function Integer(options) {
-  return exports_memory.Create({ "~kind": "Integer" }, { type: "integer" }, options);
+  return Create({ "~kind": "Integer" }, { type: "integer" }, options);
 }
 function IsInteger2(value) {
   return IsKind(value, "Integer");
@@ -1227,27 +904,21 @@ var init_integer = __esm(() => {
 
 // node_modules/typebox/build/type/types/literal.mjs
 function LiteralTypeName(value) {
-  return exports_guard.IsBigInt(value) ? "bigint" : exports_guard.IsBoolean(value) ? "boolean" : exports_guard.IsNumber(value) ? "number" : exports_guard.IsString(value) ? "string" : (() => {
+  return IsBigInt(value) ? "bigint" : IsBoolean(value) ? "boolean" : IsNumber(value) ? "number" : IsString(value) ? "string" : (() => {
     throw new InvalidLiteralValue(value);
   })();
 }
 function Literal(value, options) {
-  return exports_memory.Create({ "~kind": "Literal" }, { type: LiteralTypeName(value), const: value }, options);
+  return Create({ "~kind": "Literal" }, { type: LiteralTypeName(value), const: value }, options);
 }
 function IsLiteralValue(value) {
-  return exports_guard.IsBigInt(value) || exports_guard.IsBoolean(value) || exports_guard.IsNumber(value) || exports_guard.IsString(value);
-}
-function IsLiteralBigInt(value) {
-  return IsLiteral(value) && exports_guard.IsBigInt(value.const);
-}
-function IsLiteralBoolean(value) {
-  return IsLiteral(value) && exports_guard.IsBoolean(value.const);
+  return IsBigInt(value) || IsBoolean(value) || IsNumber(value) || IsString(value);
 }
 function IsLiteralNumber(value) {
-  return IsLiteral(value) && exports_guard.IsNumber(value.const);
+  return IsLiteral(value) && IsNumber(value.const);
 }
 function IsLiteralString(value) {
-  return IsLiteral(value) && exports_guard.IsString(value.const);
+  return IsLiteral(value) && IsString(value.const);
 }
 function IsLiteral(value) {
   return IsKind(value, "Literal");
@@ -1272,7 +943,7 @@ var init_literal = __esm(() => {
 
 // node_modules/typebox/build/type/types/null.mjs
 function Null(options) {
-  return exports_memory.Create({ "~kind": "Null" }, { type: "null" }, options);
+  return Create({ "~kind": "Null" }, { type: "null" }, options);
 }
 function IsNull2(value) {
   return IsKind(value, "Null");
@@ -1284,9 +955,9 @@ var init_null = __esm(() => {
 
 // node_modules/typebox/build/type/types/number.mjs
 function Number2(options) {
-  return exports_memory.Create({ "~kind": "Number" }, { type: "number" }, options);
+  return Create({ "~kind": "Number" }, { type: "number" }, options);
 }
-function IsNumber3(value) {
+function IsNumber2(value) {
   return IsKind(value, "Number");
 }
 var NumberPattern = "-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?";
@@ -1297,9 +968,9 @@ var init_number = __esm(() => {
 
 // node_modules/typebox/build/type/types/symbol.mjs
 function Symbol2(options) {
-  return exports_memory.Create({ "~kind": "Symbol" }, { type: "symbol" }, options);
+  return Create({ "~kind": "Symbol" }, { type: "symbol" }, options);
 }
-function IsSymbol2(value) {
+function IsSymbol(value) {
   return IsKind(value, "Symbol");
 }
 var init_symbol = __esm(() => {
@@ -1309,12 +980,12 @@ var init_symbol = __esm(() => {
 
 // node_modules/typebox/build/type/types/parameter.mjs
 function Parameter(...args) {
-  const [name, extends_, equals] = exports_arguments.Match(args, {
-    3: (name2, extends_2, equals2) => [name2, extends_2, equals2],
-    2: (name2, extends_2) => [name2, extends_2, extends_2],
-    1: (name2) => [name2, Unknown(), Unknown()]
+  const [name, extends_, equals] = Match(args, {
+    3: (name, extends_, equals) => [name, extends_, equals],
+    2: (name, extends_) => [name, extends_, extends_],
+    1: (name) => [name, Unknown(), Unknown()]
   });
-  return exports_memory.Create({ "~kind": "Parameter" }, { name, extends: extends_, equals }, {});
+  return Create({ "~kind": "Parameter" }, { name, extends: extends_, equals }, {});
 }
 function IsParameter(value) {
   return IsKind(value, "Parameter");
@@ -1328,9 +999,9 @@ var init_parameter = __esm(() => {
 
 // node_modules/typebox/build/type/types/string.mjs
 function String2(options) {
-  return exports_memory.Create({ "~kind": "String" }, { type: "string" }, options);
+  return Create({ "~kind": "String" }, { type: "string" }, options);
 }
-function IsString3(value) {
+function IsString2(value) {
   return IsKind(value, "String");
 }
 var StringPattern = ".*";
@@ -1341,13 +1012,13 @@ var init_string = __esm(() => {
 
 // node_modules/typebox/build/type/types/union.mjs
 function Union(anyOf, options = {}) {
-  return exports_memory.Create({ "~kind": "Union" }, { anyOf }, options);
+  return Create({ "~kind": "Union" }, { anyOf }, options);
 }
 function IsUnion(value) {
   return IsKind(value, "Union");
 }
 function UnionOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "anyOf"]);
+  return Discard(type, ["~kind", "anyOf"]);
 }
 var init_union = __esm(() => {
   init_memory2();
@@ -1357,7 +1028,7 @@ var init_union = __esm(() => {
 // node_modules/typebox/build/type/engine/patterns/pattern.mjs
 function ParsePatternIntoTypes(pattern) {
   const parsed = Pattern(pattern);
-  const result = exports_guard.IsEqual(parsed.length, 2) ? parsed[0] : [];
+  const result = IsEqual(parsed.length, 2) ? parsed[0] : [];
   return result;
 }
 var init_pattern = __esm(() => {
@@ -1370,10 +1041,10 @@ function FromLiteral(_value) {
   return true;
 }
 function FromTypesReduce(types) {
-  return exports_guard.ShiftLeft(types, (left, right) => FromType(left) ? FromTypesReduce(right) : false, () => true);
+  return ShiftLeft(types, (left, right) => FromType(left) ? FromTypesReduce(right) : false, () => true);
 }
 function FromTypes(types) {
-  const result = exports_guard.IsEqual(types.length, 0) ? false : FromTypesReduce(types);
+  const result = IsEqual(types.length, 0) ? false : FromTypesReduce(types);
   return result;
 }
 function FromType(type) {
@@ -1391,7 +1062,7 @@ var init_is_finite = __esm(() => {
 
 // node_modules/typebox/build/type/engine/template_literal/create.mjs
 function TemplateLiteralCreate(pattern) {
-  return exports_memory.Create({ ["~kind"]: "TemplateLiteral" }, { type: "string", pattern }, {});
+  return Create({ ["~kind"]: "TemplateLiteral" }, { type: "string", pattern }, {});
 }
 var init_create2 = __esm(() => {
   init_memory2();
@@ -1399,20 +1070,20 @@ var init_create2 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/template_literal/decode.mjs
 function FromLiteralPush(variants, value, result = []) {
-  return exports_guard.ShiftLeft(variants, (left, right) => FromLiteralPush(right, value, [...result, `${left}${value}`]), () => result);
+  return ShiftLeft(variants, (left, right) => FromLiteralPush(right, value, [...result, `${left}${value}`]), () => result);
 }
 function FromLiteral2(variants, value) {
-  return exports_guard.IsEqual(variants.length, 0) ? [`${value}`] : FromLiteralPush(variants, value);
+  return IsEqual(variants.length, 0) ? [`${value}`] : FromLiteralPush(variants, value);
 }
 function FromUnion(variants, types, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => FromUnion(variants, right, [...result, ...FromType2(variants, left)]), () => result);
+  return ShiftLeft(types, (left, right) => FromUnion(variants, right, [...result, ...FromType2(variants, left)]), () => result);
 }
 function FromType2(variants, type) {
   const result = IsUnion(type) ? FromUnion(variants, type.anyOf) : IsLiteral(type) ? FromLiteral2(variants, type.const) : Unreachable();
   return result;
 }
 function DecodeFromSpan(variants, types) {
-  return exports_guard.ShiftLeft(types, (left, right) => DecodeFromSpan(FromType2(variants, left), right), () => variants);
+  return ShiftLeft(types, (left, right) => DecodeFromSpan(FromType2(variants, left), right), () => variants);
 }
 function VariantsToLiterals(variants) {
   return variants.map((variant) => Literal(variant));
@@ -1424,11 +1095,11 @@ function DecodeTypesAsUnion(types) {
   return result;
 }
 function DecodeTypes(types) {
-  return exports_guard.IsEqual(types.length, 0) ? Unreachable() : exports_guard.IsEqual(types.length, 1) && IsLiteral(types[0]) ? types[0] : DecodeTypesAsUnion(types);
+  return IsEqual(types.length, 0) ? Unreachable() : IsEqual(types.length, 1) && IsLiteral(types[0]) ? types[0] : DecodeTypesAsUnion(types);
 }
 function TemplateLiteralDecodeUnsafe(pattern) {
   const types = ParsePatternIntoTypes(pattern);
-  const result = exports_guard.IsEqual(types.length, 0) ? String2() : IsTemplateLiteralFinite(types) ? DecodeTypes(types) : TemplateLiteralCreate(pattern);
+  const result = IsEqual(types.length, 0) ? String2() : IsTemplateLiteralFinite(types) ? DecodeTypes(types) : TemplateLiteralCreate(pattern);
   return result;
 }
 function TemplateLiteralDecode(pattern) {
@@ -1452,7 +1123,7 @@ var init_decode = __esm(() => {
 function CreateRecord(key, value) {
   const type = "object";
   const patternProperties = { [key]: value };
-  return exports_memory.Create({ ["~kind"]: "Record" }, { type, patternProperties });
+  return Create({ ["~kind"]: "Record" }, { type, patternProperties });
 }
 var init_record_create = __esm(() => {
   init_memory2();
@@ -1478,13 +1149,13 @@ var init_from_key_boolean = __esm(() => {
 // node_modules/typebox/build/type/types/tuple.mjs
 function Tuple(types, options = {}) {
   const [items, minItems, additionalItems] = [types, types.length, false];
-  return exports_memory.Create({ ["~kind"]: "Tuple" }, { type: "array", additionalItems, items, minItems }, options);
+  return Create({ ["~kind"]: "Tuple" }, { type: "array", additionalItems, items, minItems }, options);
 }
 function IsTuple(value) {
   return IsKind(value, "Tuple");
 }
 function TupleOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "items", "minItems", "additionalItems"]);
+  return Discard(type, ["~kind", "type", "items", "minItems", "additionalItems"]);
 }
 var init_tuple = __esm(() => {
   init_memory2();
@@ -1493,10 +1164,10 @@ var init_tuple = __esm(() => {
 
 // node_modules/typebox/build/type/engine/readonly/instantiate_remove.mjs
 function RemoveReadonlyOperation(type) {
-  return exports_memory.Discard(type, ["~readonly"]);
+  return Discard(type, ["~readonly"]);
 }
 function RemoveReadonlyAction(type, options) {
-  const result = exports_memory.Update(RemoveReadonlyOperation(type), {}, options);
+  const result = Update(RemoveReadonlyOperation(type), {}, options);
   return result;
 }
 function RemoveReadonlyInstantiate(context, state, type, options) {
@@ -1522,10 +1193,10 @@ var init__remove_readonly = __esm(() => {
 
 // node_modules/typebox/build/type/engine/optional/instantiate_remove.mjs
 function RemoveOptionalOperation(type) {
-  return exports_memory.Discard(type, ["~optional"]);
+  return Discard(type, ["~optional"]);
 }
 function RemoveOptionalAction(type, options) {
-  const result = exports_memory.Update(RemoveOptionalOperation(type), {}, options);
+  const result = Update(RemoveOptionalOperation(type), {}, options);
   return result;
 }
 function RemoveOptionalInstantiate(context, state, type, options) {
@@ -1551,8 +1222,8 @@ var init__remove_optional = __esm(() => {
 
 // node_modules/typebox/build/type/engine/tuple/to_object.mjs
 function TupleElementsToProperties(types) {
-  const result = types.reduceRight((result2, right, index) => {
-    return { [index]: right, ...result2 };
+  const result = types.reduceRight((result, right, index) => {
+    return { [index]: right, ...result };
   }, {});
   return result;
 }
@@ -1583,7 +1254,7 @@ function CompositePropertyKey(left, right, key) {
   return key in left ? key in right ? CompositeProperty(left[key], right[key]) : left[key] : (key in right) ? right[key] : Never();
 }
 function CompositeProperties(left, right) {
-  const keys = new Set([...exports_guard.Keys(right), ...exports_guard.Keys(left)]);
+  const keys = new Set([...Keys(right), ...Keys(left)]);
   return [...keys].reduce((result, key) => {
     return { ...result, [key]: CompositePropertyKey(left, right, key) };
   }, {});
@@ -1617,7 +1288,7 @@ var init_composite = __esm(() => {
 // node_modules/typebox/build/type/engine/evaluate/narrow.mjs
 function Narrow(left, right) {
   const result = Compare(left, right);
-  return exports_guard.IsEqual(result, ResultLeftInside) ? left : exports_guard.IsEqual(result, ResultRightInside) ? right : exports_guard.IsEqual(result, ResultEqual) ? right : Never();
+  return IsEqual(result, ResultLeftInside) ? left : IsEqual(result, ResultRightInside) ? right : IsEqual(result, ResultEqual) ? right : Never();
 }
 var init_narrow = __esm(() => {
   init_guard2();
@@ -1645,13 +1316,13 @@ function DistributeOperation(left, right) {
   return result;
 }
 function DistributeType(type, types, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => DistributeType(type, right, [...result, DistributeOperation(type, left)]), () => exports_guard.IsEqual(result.length, 0) ? [type] : result);
+  return ShiftLeft(types, (left, right) => DistributeType(type, right, [...result, DistributeOperation(type, left)]), () => IsEqual(result.length, 0) ? [type] : result);
 }
 function DistributeUnion(types, distribution, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => DistributeUnion(right, distribution, [...result, ...Distribute([left], distribution)]), () => result);
+  return ShiftLeft(types, (left, right) => DistributeUnion(right, distribution, [...result, ...Distribute([left], distribution)]), () => result);
 }
 function Distribute(types, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => IsUnion(left) ? Distribute(right, DistributeUnion(left.anyOf, result)) : Distribute(right, DistributeType(left, result)), () => result);
+  return ShiftLeft(types, (left, right) => IsUnion(left) ? Distribute(right, DistributeUnion(left.anyOf, result)) : Distribute(right, DistributeType(left, result)), () => result);
 }
 var init_distribute = __esm(() => {
   init_guard2();
@@ -1667,7 +1338,7 @@ var init_distribute = __esm(() => {
 // node_modules/typebox/build/type/engine/exclude/operation.mjs
 function ExcludeType(left, right) {
   const check = Extends({}, left, right);
-  const result = exports_result.IsExtendsTrueLike(check) ? [] : [left];
+  const result = IsExtendsTrueLike(check) ? [] : [left];
   return result;
 }
 function ExcludeUnion(types, right) {
@@ -1720,7 +1391,7 @@ function EvaluateType(type) {
   return IsDependent(type) ? EvaluateDependent(type.if, type.then, type.else) : IsEnum(type) ? EvaluateEnum(type.enum) : IsIntersect(type) ? EvaluateIntersect(type.allOf) : IsTemplateLiteral(type) ? EvaluateTemplateLiteral(type.pattern) : IsUnion(type) ? EvaluateUnion(type.anyOf) : type;
 }
 function EvaluateUnionFast(types) {
-  const result = exports_guard.IsEqual(types.length, 1) ? types[0] : exports_guard.IsEqual(types.length, 0) ? Never() : Union(types);
+  const result = IsEqual(types.length, 1) ? types[0] : IsEqual(types.length, 0) ? Never() : Union(types);
   return result;
 }
 var init_evaluate2 = __esm(() => {
@@ -1772,7 +1443,7 @@ var init_from_key_intersect = __esm(() => {
 
 // node_modules/typebox/build/type/engine/record/from_key_literal.mjs
 function FromLiteralKey(key, value) {
-  return exports_guard.IsString(key) || exports_guard.IsNumber(key) ? _Object_({ [key]: value }) : exports_guard.IsEqual(key, false) ? _Object_({ false: value }) : exports_guard.IsEqual(key, true) ? _Object_({ true: value }) : _Object_({});
+  return IsString(key) || IsNumber(key) ? _Object_({ [key]: value }) : IsEqual(key, false) ? _Object_({ false: value }) : IsEqual(key, true) ? _Object_({ true: value }) : _Object_({});
 }
 var init_from_key_literal = __esm(() => {
   init_guard2();
@@ -1791,7 +1462,7 @@ var init_from_key_number = __esm(() => {
 
 // node_modules/typebox/build/type/engine/record/from_key_string.mjs
 function FromStringKey(key, value) {
-  return exports_guard.HasPropertyKey(key, "pattern") && (exports_guard.IsString(key.pattern) || key.pattern instanceof RegExp) ? CreateRecord(key.pattern.toString(), value) : CreateRecord(StringKey, value);
+  return HasPropertyKey(key, "pattern") && (IsString(key.pattern) || key.pattern instanceof RegExp) ? CreateRecord(key.pattern.toString(), value) : CreateRecord(StringKey, value);
 }
 var init_from_key_string = __esm(() => {
   init_guard2();
@@ -1830,14 +1501,14 @@ var init_flatten = __esm(() => {
 
 // node_modules/typebox/build/type/engine/record/from_key_union.mjs
 function StringOrNumberCheck(types) {
-  return types.some((type) => IsString3(type) || IsNumber3(type) || IsInteger2(type));
+  return types.some((type) => IsString2(type) || IsNumber2(type) || IsInteger2(type));
 }
 function TryBuildRecord(types, value) {
-  return exports_guard.IsEqual(StringOrNumberCheck(types), true) ? CreateRecord(StringKey, value) : undefined;
+  return IsEqual(StringOrNumberCheck(types), true) ? CreateRecord(StringKey, value) : undefined;
 }
 function CreateProperties(types, value) {
   return types.reduce((result, left) => {
-    return IsLiteral(left) && (exports_guard.IsString(left.const) || exports_guard.IsNumber(left.const)) ? { ...result, [left.const]: value } : result;
+    return IsLiteral(left) && (IsString(left.const) || IsNumber(left.const)) ? { ...result, [left.const]: value } : result;
   }, {});
 }
 function CreateObject(types, value) {
@@ -1865,7 +1536,7 @@ var init_from_key_union = __esm(() => {
 
 // node_modules/typebox/build/type/engine/record/from_key.mjs
 function FromKey(key, value) {
-  const result = IsAny(key) ? FromAnyKey(value) : IsBoolean3(key) ? FromBooleanKey(value) : IsEnum(key) ? FromEnumKey(key.enum, value) : IsInteger2(key) ? FromIntegerKey(key, value) : IsIntersect(key) ? FromIntersectKey(key.allOf, value) : IsLiteral(key) ? FromLiteralKey(key.const, value) : IsNumber3(key) ? FromNumberKey(key, value) : IsUnion(key) ? FromUnionKey(key.anyOf, value) : IsString3(key) ? FromStringKey(key, value) : IsTemplateLiteral(key) ? FromTemplateKey(key.pattern, value) : _Object_({});
+  const result = IsAny(key) ? FromAnyKey(value) : IsBoolean2(key) ? FromBooleanKey(value) : IsEnum(key) ? FromEnumKey(key.enum, value) : IsInteger2(key) ? FromIntegerKey(key, value) : IsIntersect(key) ? FromIntersectKey(key.allOf, value) : IsLiteral(key) ? FromLiteralKey(key.const, value) : IsNumber2(key) ? FromNumberKey(key, value) : IsUnion(key) ? FromUnionKey(key.anyOf, value) : IsString2(key) ? FromStringKey(key, value) : IsTemplateLiteral(key) ? FromTemplateKey(key.pattern, value) : _Object_({});
   return result;
 }
 var init_from_key = __esm(() => {
@@ -1894,7 +1565,7 @@ var init_from_key = __esm(() => {
 
 // node_modules/typebox/build/type/engine/record/instantiate.mjs
 function RecordAction(key, value, options) {
-  const result = CanInstantiate([key]) ? exports_memory.Update(FromKey(key, value), {}, options) : RecordDeferred(key, value, options);
+  const result = CanInstantiate([key]) ? Update(FromKey(key, value), {}, options) : RecordDeferred(key, value, options);
   return result;
 }
 function RecordInstantiate(context, state, key, value, options) {
@@ -1920,11 +1591,11 @@ function RecordFromPattern(pattern, value) {
   return CreateRecord(pattern, value);
 }
 function RecordPatternToType(pattern) {
-  const result = exports_guard.IsEqual(pattern, StringKey) ? String2() : exports_guard.IsEqual(pattern, IntegerKey) ? Integer() : exports_guard.IsEqual(pattern, NumberKey) ? Number2() : TemplateLiteralDecodeUnsafe(pattern);
+  const result = IsEqual(pattern, StringKey) ? String2() : IsEqual(pattern, IntegerKey) ? Integer() : IsEqual(pattern, NumberKey) ? Number2() : TemplateLiteralDecodeUnsafe(pattern);
   return result;
 }
 function RecordPattern(type) {
-  return exports_guard.Keys(type.patternProperties)[0];
+  return Keys(type.patternProperties)[0];
 }
 function RecordKey(type) {
   const pattern = RecordPattern(type);
@@ -1936,9 +1607,6 @@ function RecordValue(type) {
 }
 function IsRecord(value) {
   return IsKind(value, "Record");
-}
-function RecordOptions(type) {
-  return exports_memory.Discard(type, ["~kind", "type", "patternProperties"]);
 }
 var IntegerKey, NumberKey, StringKey;
 var init_record = __esm(() => {
@@ -1959,7 +1627,7 @@ var init_record = __esm(() => {
 
 // node_modules/typebox/build/type/types/rest.mjs
 function Rest(type) {
-  return exports_memory.Create({ "~kind": "Rest" }, { type: "rest", items: type }, {});
+  return Create({ "~kind": "Rest" }, { type: "rest", items: type }, {});
 }
 function IsRest(value) {
   return IsKind(value, "Rest");
@@ -1974,7 +1642,7 @@ var init_static = () => {};
 
 // node_modules/typebox/build/type/types/this.mjs
 function This(options) {
-  return exports_memory.Create({ ["~kind"]: "This" }, { $ref: "#" }, options);
+  return Create({ ["~kind"]: "This" }, { $ref: "#" }, options);
 }
 function IsThis(value) {
   return IsKind(value, "This");
@@ -1986,9 +1654,9 @@ var init_this = __esm(() => {
 
 // node_modules/typebox/build/type/types/undefined.mjs
 function Undefined(options) {
-  return exports_memory.Create({ "~kind": "Undefined" }, { type: "undefined" }, options);
+  return Create({ "~kind": "Undefined" }, { type: "undefined" }, options);
 }
-function IsUndefined2(value) {
+function IsUndefined(value) {
   return IsKind(value, "Undefined");
 }
 var init_undefined = __esm(() => {
@@ -1998,7 +1666,7 @@ var init_undefined = __esm(() => {
 
 // node_modules/typebox/build/type/types/void.mjs
 function Void(options) {
-  return exports_memory.Create({ "~kind": "Void" }, { type: "void" }, options);
+  return Create({ "~kind": "Void" }, { type: "void" }, options);
 }
 function IsVoid(value) {
   return IsKind(value, "Void");
@@ -2058,8 +1726,8 @@ var init_types = __esm(() => {
 });
 
 // node_modules/typebox/build/type/script/mapping.mjs
-function IntrinsicOrCall(ref2, parameters) {
-  return exports_guard.IsEqual(ref2, "Array") ? _Array_(parameters[0]) : exports_guard.IsEqual(ref2, "Capitalize") ? CapitalizeDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "ConstructorParameters") ? ConstructorParametersDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Evaluate") ? EvaluateDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Exclude") ? ExcludeDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "Extract") ? ExtractDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "Index") ? IndexDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "InstanceType") ? InstanceTypeDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Lowercase") ? LowercaseDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "NonNullable") ? NonNullableDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Omit") ? OmitDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "Parameters") ? ParametersDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Partial") ? PartialDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Pick") ? PickDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "Readonly") ? ReadonlyObjectDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "KeyOf") ? KeyOfDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Record") ? RecordDeferred(parameters[0], parameters[1]) : exports_guard.IsEqual(ref2, "Required") ? RequiredDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "ReturnType") ? ReturnTypeDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Uncapitalize") ? UncapitalizeDeferred(parameters[0]) : exports_guard.IsEqual(ref2, "Uppercase") ? UppercaseDeferred(parameters[0]) : CallConstruct(Ref(ref2), parameters);
+function IntrinsicOrCall(ref, parameters) {
+  return IsEqual(ref, "Array") ? _Array_(parameters[0]) : IsEqual(ref, "Capitalize") ? CapitalizeDeferred(parameters[0]) : IsEqual(ref, "ConstructorParameters") ? ConstructorParametersDeferred(parameters[0]) : IsEqual(ref, "Evaluate") ? EvaluateDeferred(parameters[0]) : IsEqual(ref, "Exclude") ? ExcludeDeferred(parameters[0], parameters[1]) : IsEqual(ref, "Extract") ? ExtractDeferred(parameters[0], parameters[1]) : IsEqual(ref, "Index") ? IndexDeferred(parameters[0], parameters[1]) : IsEqual(ref, "InstanceType") ? InstanceTypeDeferred(parameters[0]) : IsEqual(ref, "Lowercase") ? LowercaseDeferred(parameters[0]) : IsEqual(ref, "NonNullable") ? NonNullableDeferred(parameters[0]) : IsEqual(ref, "Omit") ? OmitDeferred(parameters[0], parameters[1]) : IsEqual(ref, "Parameters") ? ParametersDeferred(parameters[0]) : IsEqual(ref, "Partial") ? PartialDeferred(parameters[0]) : IsEqual(ref, "Pick") ? PickDeferred(parameters[0], parameters[1]) : IsEqual(ref, "Readonly") ? ReadonlyObjectDeferred(parameters[0]) : IsEqual(ref, "KeyOf") ? KeyOfDeferred(parameters[0]) : IsEqual(ref, "Record") ? RecordDeferred(parameters[0], parameters[1]) : IsEqual(ref, "Required") ? RequiredDeferred(parameters[0]) : IsEqual(ref, "ReturnType") ? ReturnTypeDeferred(parameters[0]) : IsEqual(ref, "Uncapitalize") ? UncapitalizeDeferred(parameters[0]) : IsEqual(ref, "Uppercase") ? UppercaseDeferred(parameters[0]) : CallConstruct(Ref(ref), parameters);
 }
 function Unreachable2() {
   throw Error("Unreachable");
@@ -2143,7 +1811,7 @@ function LiteralBigIntMapping(input) {
   return Literal(BigInt(input));
 }
 function LiteralBooleanMapping(input) {
-  return Literal(exports_guard.IsEqual(input, "true"));
+  return Literal(IsEqual(input, "true"));
 }
 function LiteralNumberMapping(input) {
   return Literal(parseFloat(input));
@@ -2158,7 +1826,7 @@ function TemplateSpanMapping(input) {
   return Literal(input);
 }
 function TemplateBodyMapping(input) {
-  return exports_guard.IsEqual(input.length, 3) ? [input[0], input[1], ...input[2]] : [input[0]];
+  return IsEqual(input.length, 3) ? [input[0], input[1], ...input[2]] : [input[0]];
 }
 function TemplateLiteralTypesMapping(input) {
   return input[1];
@@ -2167,49 +1835,49 @@ function TemplateLiteralMapping(input) {
   return TemplateLiteralDeferred(input);
 }
 function DependentMapping(input) {
-  return exports_guard.IsEqual(input.length, 6) ? Dependent(input[1], input[3], input[5]) : Dependent(input[1], input[3], Unknown());
+  return IsEqual(input.length, 6) ? Dependent(input[1], input[3], input[5]) : Dependent(input[1], input[3], Unknown());
 }
 function KeyOfMapping(input) {
   return input.length > 0;
 }
 function IndexArrayMapping(input) {
   return input.reduce((result, current) => {
-    return exports_guard.IsEqual(current.length, 3) ? [...result, [current[1]]] : [...result, []];
+    return IsEqual(current.length, 3) ? [...result, [current[1]]] : [...result, []];
   }, []);
 }
 function ExtendsMapping(input) {
-  return exports_guard.IsEqual(input.length, 6) ? [input[1], input[3], input[5]] : [];
+  return IsEqual(input.length, 6) ? [input[1], input[3], input[5]] : [];
 }
 function BaseMapping(input) {
-  return exports_guard.IsArray(input) && exports_guard.IsEqual(input.length, 3) ? input[1] : input;
+  return IsArray(input) && IsEqual(input.length, 3) ? input[1] : input;
 }
 function WithMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) ? input[1] : [];
+  return IsEqual(input.length, 2) ? input[1] : [];
 }
 function FactorIndexArray(Type, indexArray) {
   return indexArray.reduce((result, left) => {
     const _left = left;
-    return exports_guard.IsEqual(_left.length, 1) ? IndexDeferred(result, _left[0]) : exports_guard.IsEqual(_left.length, 0) ? _Array_(result) : Unreachable2();
+    return IsEqual(_left.length, 1) ? IndexDeferred(result, _left[0]) : IsEqual(_left.length, 0) ? _Array_(result) : Unreachable2();
   }, Type);
 }
 function FactorExtends(type, extend) {
-  return exports_guard.IsEqual(extend.length, 3) ? ConditionalDeferred(type, extend[0], extend[1], extend[2]) : type;
+  return IsEqual(extend.length, 3) ? ConditionalDeferred(type, extend[0], extend[1], extend[2]) : type;
 }
 function FactorWith(type, withClause) {
-  return exports_guard.IsArray(withClause) && exports_guard.IsEqual(withClause.length, 0) ? type : WithDeferred(type, withClause);
+  return IsArray(withClause) && IsEqual(withClause.length, 0) ? type : WithDeferred(type, withClause);
 }
 function FactorMapping(input) {
   const [keyOf, type, indexArray, extend, withClause] = input;
   return FactorWith(keyOf ? FactorExtends(KeyOfDeferred(FactorIndexArray(type, indexArray)), extend) : FactorExtends(FactorIndexArray(type, indexArray), extend), withClause);
 }
-function ExprBinaryMapping(left, rest2) {
-  return exports_guard.IsEqual(rest2.length, 3) ? (() => {
-    const [operator, right, next] = rest2;
+function ExprBinaryMapping(left, rest) {
+  return IsEqual(rest.length, 3) ? (() => {
+    const [operator, right, next] = rest;
     const Schema = ExprBinaryMapping(right, next);
-    if (exports_guard.IsEqual(operator, "&")) {
+    if (IsEqual(operator, "&")) {
       return IsIntersect(Schema) ? Intersect([left, ...Schema.allOf]) : Intersect([left, Schema]);
     }
-    if (exports_guard.IsEqual(operator, "|")) {
+    if (IsEqual(operator, "|")) {
       return IsUnion(Schema) ? Union([left, ...Schema.anyOf]) : Union([left, Schema]);
     }
     Unreachable2();
@@ -2219,15 +1887,15 @@ function ExprTermTailMapping(input) {
   return input;
 }
 function ExprTermMapping(input) {
-  const [left, rest2] = input;
-  return ExprBinaryMapping(left, rest2);
+  const [left, rest] = input;
+  return ExprBinaryMapping(left, rest);
 }
 function ExprTailMapping(input) {
   return input;
 }
 function ExprMapping(input) {
-  const [left, rest2] = input;
-  return ExprBinaryMapping(left, rest2);
+  const [left, rest] = input;
+  return ExprBinaryMapping(left, rest);
 }
 function ExprReadonlyMapping(input) {
   return AddImmutableDeferred(input[1]);
@@ -2239,7 +1907,7 @@ function GenericTypeMapping(input) {
   return Generic(input[0], input[2]);
 }
 function InferTypeMapping(input) {
-  return exports_guard.IsEqual(input.length, 4) ? Infer(input[1], input[3]) : exports_guard.IsEqual(input.length, 2) ? Infer(input[1], Unknown()) : Unreachable2();
+  return IsEqual(input.length, 4) ? Infer(input[1], input[3]) : IsEqual(input.length, 2) ? Infer(input[1], Unknown()) : Unreachable2();
 }
 function TypeMapping(input) {
   return input;
@@ -2254,7 +1922,7 @@ function PropertyKeyQuotedMapping(input) {
   return input;
 }
 function PropertyKeyIndexMapping(input) {
-  return IsInteger2(input[3]) ? IntegerKey : IsNumber3(input[3]) ? NumberKey : IsSymbol2(input[3]) ? StringKey : IsString3(input[3]) ? StringKey : Unreachable2();
+  return IsInteger2(input[3]) ? IntegerKey : IsNumber2(input[3]) ? NumberKey : IsSymbol(input[3]) ? StringKey : IsString2(input[3]) ? StringKey : Unreachable2();
 }
 function PropertyKeyMapping(input) {
   return input;
@@ -2279,20 +1947,20 @@ function PropertyListMapping(input) {
 }
 function PropertiesReduce(propertyList) {
   return propertyList.reduce((result, left) => {
-    const isPatternProperties = exports_guard.HasPropertyKey(left, IntegerKey) || exports_guard.HasPropertyKey(left, NumberKey) || exports_guard.HasPropertyKey(left, StringKey);
-    return isPatternProperties ? [result[0], exports_memory.Assign(result[1], left)] : [exports_memory.Assign(result[0], left), result[1]];
+    const isPatternProperties = HasPropertyKey(left, IntegerKey) || HasPropertyKey(left, NumberKey) || HasPropertyKey(left, StringKey);
+    return isPatternProperties ? [result[0], Assign(result[1], left)] : [Assign(result[0], left), result[1]];
   }, [{}, {}]);
 }
 function PropertiesMapping(input) {
   return PropertiesReduce(input[1]);
 }
 function _Object_Mapping(input) {
-  const [properties2, patternProperties] = input;
-  const options = exports_guard.IsEqual(exports_guard.Keys(patternProperties).length, 0) ? {} : { patternProperties };
-  return _Object_(properties2, options);
+  const [properties, patternProperties] = input;
+  const options = IsEqual(Keys(patternProperties).length, 0) ? {} : { patternProperties };
+  return _Object_(properties, options);
 }
 function ElementNamedMapping(input) {
-  return exports_guard.IsEqual(input.length, 5) ? AddReadonlyDeferred(AddOptionalDeferred(input[4])) : exports_guard.IsEqual(input.length, 3) ? input[2] : exports_guard.IsEqual(input.length, 4) ? exports_guard.IsEqual(input[2], "readonly") ? AddReadonlyDeferred(input[3]) : AddOptionalDeferred(input[3]) : Unreachable2();
+  return IsEqual(input.length, 5) ? AddReadonlyDeferred(AddOptionalDeferred(input[4])) : IsEqual(input.length, 3) ? input[2] : IsEqual(input.length, 4) ? IsEqual(input[2], "readonly") ? AddReadonlyDeferred(input[3]) : AddOptionalDeferred(input[3]) : Unreachable2();
 }
 function ElementReadonlyOptionalMapping(input) {
   return AddReadonlyDeferred(AddOptionalDeferred(input[1]));
@@ -2307,7 +1975,7 @@ function ElementBaseMapping(input) {
   return input;
 }
 function ElementMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) ? Rest(input[1]) : exports_guard.IsEqual(input.length, 1) ? input[0] : Unreachable2();
+  return IsEqual(input.length, 2) ? Rest(input[1]) : IsEqual(input.length, 1) ? input[0] : Unreachable2();
 }
 function ElementListMapping(input) {
   return Delimited(input);
@@ -2331,7 +1999,7 @@ function ParameterBaseMapping(input) {
   return input;
 }
 function ParameterMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) ? Rest(input[1]) : exports_guard.IsEqual(input.length, 1) ? input[0] : Unreachable2();
+  return IsEqual(input.length, 2) ? Rest(input[1]) : IsEqual(input.length, 1) ? input[0] : Unreachable2();
 }
 function ParameterListMapping(input) {
   return Delimited(input);
@@ -2343,22 +2011,22 @@ function _Constructor_Mapping(input) {
   return Constructor(input[2], input[5]);
 }
 function ApplyReadonly(state, type) {
-  return exports_guard.IsEqual(state, "remove") ? RemoveReadonlyDeferred(type) : exports_guard.IsEqual(state, "add") ? AddReadonlyDeferred(type) : type;
+  return IsEqual(state, "remove") ? RemoveReadonlyDeferred(type) : IsEqual(state, "add") ? AddReadonlyDeferred(type) : type;
 }
 function MappedReadonlyMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) && exports_guard.IsEqual(input[0], "-") ? "remove" : exports_guard.IsEqual(input.length, 2) && exports_guard.IsEqual(input[0], "+") ? "add" : exports_guard.IsEqual(input.length, 1) ? "add" : "none";
+  return IsEqual(input.length, 2) && IsEqual(input[0], "-") ? "remove" : IsEqual(input.length, 2) && IsEqual(input[0], "+") ? "add" : IsEqual(input.length, 1) ? "add" : "none";
 }
 function ApplyOptional(state, type) {
-  return exports_guard.IsEqual(state, "remove") ? RemoveOptionalDeferred(type) : exports_guard.IsEqual(state, "add") ? AddOptionalDeferred(type) : type;
+  return IsEqual(state, "remove") ? RemoveOptionalDeferred(type) : IsEqual(state, "add") ? AddOptionalDeferred(type) : type;
 }
 function MappedOptionalMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) && exports_guard.IsEqual(input[0], "-") ? "remove" : exports_guard.IsEqual(input.length, 2) && exports_guard.IsEqual(input[0], "+") ? "add" : exports_guard.IsEqual(input.length, 1) ? "add" : "none";
+  return IsEqual(input.length, 2) && IsEqual(input[0], "-") ? "remove" : IsEqual(input.length, 2) && IsEqual(input[0], "+") ? "add" : IsEqual(input.length, 1) ? "add" : "none";
 }
 function MappedAsMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) ? [input[1]] : [];
+  return IsEqual(input.length, 2) ? [input[1]] : [];
 }
 function _Mapped_Mapping(input) {
-  return exports_guard.IsArray(input[6]) && exports_guard.IsEqual(input[6].length, 1) ? MappedDeferred(Identifier(input[3]), input[5], input[6][0], ApplyReadonly(input[1], ApplyOptional(input[8], input[10]))) : MappedDeferred(Identifier(input[3]), input[5], Ref(input[3]), ApplyReadonly(input[1], ApplyOptional(input[8], input[10])));
+  return IsArray(input[6]) && IsEqual(input[6].length, 1) ? MappedDeferred(Identifier(input[3]), input[5], input[6][0], ApplyReadonly(input[1], ApplyOptional(input[8], input[10]))) : MappedDeferred(Identifier(input[3]), input[5], Ref(input[3]), ApplyReadonly(input[1], ApplyOptional(input[8], input[10])));
 }
 function ReferenceMapping(input) {
   return Ref(input);
@@ -2370,7 +2038,7 @@ function WithNumberMapping(input) {
   return parseFloat(input);
 }
 function WithBooleanMapping(input) {
-  return exports_guard.IsEqual(input, "true");
+  return IsEqual(input, "true");
 }
 function WithStringMapping(input) {
   return input;
@@ -2389,7 +2057,7 @@ function WithPropertyListMapping(input) {
 }
 function WithObjectMappingReduce(propertyList) {
   return propertyList.reduce((result, left) => {
-    return exports_memory.Assign(result, left);
+    return Assign(result, left);
   }, {});
 }
 function WithObjectMapping(input) {
@@ -2444,20 +2112,20 @@ function InterfaceDeclarationHeritageListMapping(input) {
   return Delimited(input);
 }
 function InterfaceDeclarationHeritageMapping(input) {
-  return exports_guard.IsEqual(input.length, 2) ? input[1] : [];
+  return IsEqual(input.length, 2) ? input[1] : [];
 }
 function InterfaceDeclarationGenericMapping(input) {
   const parameters = input[2];
   const heritage = input[3];
-  const [properties2, patternProperties] = input[4];
-  const options = exports_guard.IsEqual(exports_guard.Keys(patternProperties).length, 0) ? {} : { patternProperties };
-  return { [input[1]]: Generic(parameters, InterfaceDeferred(heritage, properties2, options)) };
+  const [properties, patternProperties] = input[4];
+  const options = IsEqual(Keys(patternProperties).length, 0) ? {} : { patternProperties };
+  return { [input[1]]: Generic(parameters, InterfaceDeferred(heritage, properties, options)) };
 }
 function InterfaceDeclarationMapping(input) {
   const heritage = input[2];
-  const [properties2, patternProperties] = input[3];
-  const options = exports_guard.IsEqual(exports_guard.Keys(patternProperties).length, 0) ? {} : { patternProperties };
-  return { [input[1]]: InterfaceDeferred(heritage, properties2, options) };
+  const [properties, patternProperties] = input[3];
+  const options = IsEqual(Keys(patternProperties).length, 0) ? {} : { patternProperties };
+  return { [input[1]]: InterfaceDeferred(heritage, properties, options) };
 }
 function TypeAliasDeclarationGenericMapping(input) {
   return { [input[1]]: Generic(input[2], input[4]) };
@@ -2480,14 +2148,14 @@ function ModuleDeclarationMapping(input) {
 function ModuleMapping(input) {
   const moduleDeclaration = input[0];
   const moduleDeclarationList = input[1];
-  return ModuleDeferred(exports_memory.Assign(moduleDeclaration, moduleDeclarationList[0]));
+  return ModuleDeferred(Assign(moduleDeclaration, moduleDeclarationList[0]));
 }
 function ScriptMapping(input) {
   return input;
 }
 var DelimitedDecode = (input, result = []) => {
-  return input.reduce((result2, left) => {
-    return exports_guard.IsArray(left) && exports_guard.IsEqual(left.length, 2) ? [...result2, left[0]] : [...result2, left];
+  return input.reduce((result, left) => {
+    return IsArray(left) && IsEqual(left.length, 2) ? [...result, left[0]] : [...result, left];
   }, []);
 }, Delimited = (input) => {
   const [left, right] = input;
@@ -2578,7 +2246,7 @@ var init_trim = __esm(() => {
 
 // node_modules/typebox/build/type/script/token/internal/optional.mjs
 function Optional2(value, input) {
-  return Match2(Take([value], input), (Optional3, Rest2) => [Optional3, Rest2], () => ["", input]);
+  return Match2(Take([value], input), (Optional, Rest) => [Optional, Rest], () => ["", input]);
 }
 var init_optional = __esm(() => {
   init_match();
@@ -2586,11 +2254,11 @@ var init_optional = __esm(() => {
 });
 
 // node_modules/typebox/build/type/script/token/internal/many.mjs
-function IsDiscard(discard2, input) {
-  return discard2.includes(input);
+function IsDiscard(discard, input) {
+  return discard.includes(input);
 }
-function Many(allowed, discard2, input, result = "") {
-  return Match2(Take(allowed, input), (Char, Rest2) => IsDiscard(discard2, Char) ? Many(allowed, discard2, Rest2, result) : Many(allowed, discard2, Rest2, `${result}${Char}`), () => [result, input]);
+function Many(allowed, discard, input, result = "") {
+  return Match2(Take(allowed, input), (Char, Rest) => IsDiscard(discard, Char) ? Many(allowed, discard, Rest, result) : Many(allowed, discard, Rest, `${result}${Char}`), () => [result, input]);
 }
 var init_many = __esm(() => {
   init_match();
@@ -2605,7 +2273,7 @@ function TakeDigits(input) {
   return Many(AllowedDigits, [UnderScore], input);
 }
 function TakeUnsignedInteger(input) {
-  return Match2(Take([Zero], input), (Zero2, ZeroRest) => [Zero2, ZeroRest], () => Match2(TakeNonZero(input), (NonZero2, NonZeroRest) => Match2(TakeDigits(NonZeroRest), (Digits, DigitsRest) => [`${NonZero2}${Digits}`, DigitsRest], () => []), () => []));
+  return Match2(Take([Zero], input), (Zero, ZeroRest) => [Zero, ZeroRest], () => Match2(TakeNonZero(input), (NonZero, NonZeroRest) => Match2(TakeDigits(NonZeroRest), (Digits, DigitsRest) => [`${NonZero}${Digits}`, DigitsRest], () => []), () => []));
 }
 function UnsignedInteger(input) {
   return TakeUnsignedInteger(Trim(input));
@@ -2628,7 +2296,7 @@ function TakeSign(input) {
   return Optional2(Hyphen, input);
 }
 function TakeSignedInteger(input) {
-  return Match2(TakeSign(input), (Sign, SignRest) => Match2(UnsignedInteger(SignRest), (UnsignedInteger2, UnsignedIntegerRest) => [`${Sign}${UnsignedInteger2}`, UnsignedIntegerRest], () => []), () => []);
+  return Match2(TakeSign(input), (Sign, SignRest) => Match2(UnsignedInteger(SignRest), (UnsignedInteger, UnsignedIntegerRest) => [`${Sign}${UnsignedInteger}`, UnsignedIntegerRest], () => []), () => []);
 }
 function Integer2(input) {
   return TakeSignedInteger(Trim(input));
@@ -2643,7 +2311,7 @@ var init_integer2 = __esm(() => {
 
 // node_modules/typebox/build/type/script/token/bigint.mjs
 function TakeBigInt(input) {
-  return Match2(Integer2(input), (Integer3, IntegerRest) => Match2(Take(["n"], IntegerRest), (_N, NRest) => [`${Integer3}`, NRest], () => []), () => []);
+  return Match2(Integer2(input), (Integer, IntegerRest) => Match2(Take(["n"], IntegerRest), (_N, NRest) => [`${Integer}`, NRest], () => []), () => []);
 }
 function BigInt3(input) {
   return TakeBigInt(input);
@@ -2675,10 +2343,10 @@ function TakeInitial(input) {
   return Take(Initial, input);
 }
 function TakeRemaining(input, result = "") {
-  return Match2(Take(Remaining, input), (Remaining2, RemainingRest) => TakeRemaining(RemainingRest, `${result}${Remaining2}`), () => [result, input]);
+  return Match2(Take(Remaining, input), (Remaining, RemainingRest) => TakeRemaining(RemainingRest, `${result}${Remaining}`), () => [result, input]);
 }
 function TakeIdent(input) {
-  return Match2(TakeInitial(input), (Initial2, InitialRest) => Match2(TakeRemaining(InitialRest), (Remaining2, RemainingRest) => [`${Initial2}${Remaining2}`, RemainingRest], () => []), () => []);
+  return Match2(TakeInitial(input), (Initial, InitialRest) => Match2(TakeRemaining(InitialRest), (Remaining, RemainingRest) => [`${Initial}${Remaining}`, RemainingRest], () => []), () => []);
 }
 function Ident(input) {
   return TakeIdent(Trim(input));
@@ -2704,10 +2372,10 @@ function TakeFractional(input) {
   return Match2(Many(AllowedDigits2, [UnderScore], input), (Digits, DigitsRest) => IsEqual(Digits, "") ? [] : [Digits, DigitsRest], () => []);
 }
 function LeadingDot(input) {
-  return Match2(Take([Dot], input), (Dot2, DotRest) => Match2(TakeFractional(DotRest), (Fractional, FractionalRest) => [`0${Dot2}${Fractional}`, FractionalRest], () => []), () => []);
+  return Match2(Take([Dot], input), (Dot, DotRest) => Match2(TakeFractional(DotRest), (Fractional, FractionalRest) => [`0${Dot}${Fractional}`, FractionalRest], () => []), () => []);
 }
 function LeadingInteger(input) {
-  return Match2(UnsignedInteger(input), (Integer3, IntegerRest) => Match2(Take([Dot], IntegerRest), (Dot2, DotRest) => Match2(TakeFractional(DotRest), (Fractional, FractionalRest) => [`${Integer3}${Dot2}${Fractional}`, FractionalRest], () => [`${Integer3}`, DotRest]), () => [`${Integer3}`, IntegerRest]), () => []);
+  return Match2(UnsignedInteger(input), (Integer, IntegerRest) => Match2(Take([Dot], IntegerRest), (Dot, DotRest) => Match2(TakeFractional(DotRest), (Fractional, FractionalRest) => [`${Integer}${Dot}${Fractional}`, FractionalRest], () => [`${Integer}`, DotRest]), () => [`${Integer}`, IntegerRest]), () => []);
 }
 function TakeUnsignedNumber(input) {
   return IsLeadingDot(input) ? LeadingDot(input) : LeadingInteger(input);
@@ -2733,7 +2401,7 @@ function TakeSign2(input) {
   return Optional2(Hyphen, input);
 }
 function TakeSignedNumber(input) {
-  return Match2(TakeSign2(input), (Sign, SignRest) => Match2(UnsignedNumber(SignRest), (UnsignedInteger2, UnsignedIntegerRest) => [`${Sign}${UnsignedInteger2}`, UnsignedIntegerRest], () => []), () => []);
+  return Match2(TakeSign2(input), (Sign, SignRest) => Match2(UnsignedNumber(SignRest), (UnsignedInteger, UnsignedIntegerRest) => [`${Sign}${UnsignedInteger}`, UnsignedIntegerRest], () => []), () => []);
 }
 function Number3(input) {
   return TakeSignedNumber(Trim(input));
@@ -2760,7 +2428,7 @@ function IsInputMatchSentinal(end, input) {
   return ShiftLeft(end, (left, right) => input.startsWith(left) ? true : IsInputMatchSentinal(right, input), () => false);
 }
 function Until(end, input, result = "") {
-  return Match2(TakeOne(input), (One, Rest2) => IsInputMatchSentinal(end, input) ? [result, input] : Until(end, Rest2, `${result}${One}`), () => []);
+  return Match2(TakeOne(input), (One, Rest) => IsInputMatchSentinal(end, input) ? [result, input] : Until(end, Rest, `${result}${One}`), () => []);
 }
 var init_until = __esm(() => {
   init_match();
@@ -2769,10 +2437,10 @@ var init_until = __esm(() => {
 
 // node_modules/typebox/build/type/script/token/span.mjs
 function MultiLine(start, end, input) {
-  return Match2(Take([start], input), (_, Rest2) => Match2(Until([end], Rest2), (Until2, UntilRest) => Match2(Take([end], UntilRest), (_2, Rest3) => [`${Until2}`, Rest3], () => []), () => []), () => []);
+  return Match2(Take([start], input), (_, Rest) => Match2(Until([end], Rest), (Until, UntilRest) => Match2(Take([end], UntilRest), (_, Rest) => [`${Until}`, Rest], () => []), () => []), () => []);
 }
 function SingleLine(start, end, input) {
-  return Match2(Take([start], input), (_, Rest2) => Match2(Until([NewLine, end], Rest2), (Until2, UntilRest) => Match2(Take([end], UntilRest), (_2, EndRest) => [`${Until2}`, EndRest], () => []), () => []), () => []);
+  return Match2(Take([start], input), (_, Rest) => Match2(Until([NewLine, end], Rest), (Until, UntilRest) => Match2(Take([end], UntilRest), (_, EndRest) => [`${Until}`, EndRest], () => []), () => []), () => []);
 }
 function Span(start, end, multiLine, input) {
   return multiLine ? MultiLine(start, end, Trim(input)) : SingleLine(start, end, Trim(input));
@@ -2793,7 +2461,7 @@ function TakeSpan(quote, input) {
   return Span(quote, quote, false, input);
 }
 function TakeString(quotes, input) {
-  return Match2(TakeInitial2(quotes, input), (Initial2, InitialRest) => TakeSpan(Initial2, `${Initial2}${InitialRest}`), () => []);
+  return Match2(TakeInitial2(quotes, input), (Initial, InitialRest) => TakeSpan(Initial, `${Initial}${InitialRest}`), () => []);
 }
 function String3(quotes, input) {
   return TakeString(quotes, Trim(input));
@@ -2807,7 +2475,7 @@ var init_string2 = __esm(() => {
 
 // node_modules/typebox/build/type/script/token/until_1.mjs
 function Until_1(end, input) {
-  return Match2(Until(end, input), (Until2, UntilRest) => IsEqual(Until2, "") ? [] : [Until2, UntilRest], () => []);
+  return Match2(Until(end, input), (Until, UntilRest) => IsEqual(Until, "") ? [] : [Until, UntilRest], () => []);
 }
 var init_until_1 = __esm(() => {
   init_guard3();
@@ -2832,12 +2500,12 @@ var init_token = __esm(() => {
 });
 
 // node_modules/typebox/build/type/script/parser.mjs
-var If = (result, left, right = () => []) => result.length === 2 ? left(result) : right(), GenericParameterExtendsEquals = (input) => If(If(Ident(input), ([_0, input2]) => If(Const("extends", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => If(Const("=", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [GenericParameterExtendsEqualsMapping(_0), input2]), GenericParameterExtends = (input) => If(If(Ident(input), ([_0, input2]) => If(Const("extends", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [GenericParameterExtendsMapping(_0), input2]), GenericParameterEquals = (input) => If(If(Ident(input), ([_0, input2]) => If(Const("=", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [GenericParameterEqualsMapping(_0), input2]), GenericParameterIdentifier = (input) => If(Ident(input), ([_0, input2]) => [GenericParameterIdentifierMapping(_0), input2]), GenericParameter = (input) => If(If(GenericParameterExtendsEquals(input), ([_0, input2]) => [_0, input2], () => If(GenericParameterExtends(input), ([_0, input2]) => [_0, input2], () => If(GenericParameterEquals(input), ([_0, input2]) => [_0, input2], () => If(GenericParameterIdentifier(input), ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [GenericParameterMapping(_0), input2]), GenericParameterList_0 = (input, result = []) => If(If(GenericParameter(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => GenericParameterList_0(input2, [...result, _0]), () => [result, input]), GenericParameterList = (input) => If(If(GenericParameterList_0(input), ([_0, input2]) => If(If(If(GenericParameter(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [GenericParameterListMapping(_0), input2]), GenericParameters = (input) => If(If(Const("<", input), ([_0, input2]) => If(GenericParameterList(input2), ([_1, input3]) => If(Const(">", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [GenericParametersMapping(_0), input2]), GenericCallArgumentList_0 = (input, result = []) => If(If(Type(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => GenericCallArgumentList_0(input2, [...result, _0]), () => [result, input]), GenericCallArgumentList = (input) => If(If(GenericCallArgumentList_0(input), ([_0, input2]) => If(If(If(Type(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [GenericCallArgumentListMapping(_0), input2]), GenericCallArguments = (input) => If(If(Const("<", input), ([_0, input2]) => If(GenericCallArgumentList(input2), ([_1, input3]) => If(Const(">", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [GenericCallArgumentsMapping(_0), input2]), GenericCall = (input) => If(If(Ident(input), ([_0, input2]) => If(GenericCallArguments(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [GenericCallMapping(_0), input2]), OptionalSemiColon = (input) => If(If(If(Const(";", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [OptionalSemiColonMapping(_0), input2]), KeywordString = (input) => If(Const("string", input), ([_0, input2]) => [KeywordStringMapping(_0), input2]), KeywordNumber = (input) => If(Const("number", input), ([_0, input2]) => [KeywordNumberMapping(_0), input2]), KeywordBoolean = (input) => If(Const("boolean", input), ([_0, input2]) => [KeywordBooleanMapping(_0), input2]), KeywordUndefined = (input) => If(Const("undefined", input), ([_0, input2]) => [KeywordUndefinedMapping(_0), input2]), KeywordNull = (input) => If(Const("null", input), ([_0, input2]) => [KeywordNullMapping(_0), input2]), KeywordInteger = (input) => If(Const("integer", input), ([_0, input2]) => [KeywordIntegerMapping(_0), input2]), KeywordBigInt = (input) => If(Const("bigint", input), ([_0, input2]) => [KeywordBigIntMapping(_0), input2]), KeywordUnknown = (input) => If(Const("unknown", input), ([_0, input2]) => [KeywordUnknownMapping(_0), input2]), KeywordAny = (input) => If(Const("any", input), ([_0, input2]) => [KeywordAnyMapping(_0), input2]), KeywordObject = (input) => If(Const("object", input), ([_0, input2]) => [KeywordObjectMapping(_0), input2]), KeywordNever = (input) => If(Const("never", input), ([_0, input2]) => [KeywordNeverMapping(_0), input2]), KeywordSymbol = (input) => If(Const("symbol", input), ([_0, input2]) => [KeywordSymbolMapping(_0), input2]), KeywordVoid = (input) => If(Const("void", input), ([_0, input2]) => [KeywordVoidMapping(_0), input2]), KeywordThis = (input) => If(Const("this", input), ([_0, input2]) => [KeywordThisMapping(_0), input2]), TemplateInterpolate = (input) => If(If(Const("${", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("}", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [TemplateInterpolateMapping(_0), input2]), TemplateSpan = (input) => If(Until(["${", "`"], input), ([_0, input2]) => [TemplateSpanMapping(_0), input2]), TemplateBody = (input) => If(If(If(TemplateSpan(input), ([_0, input2]) => If(TemplateInterpolate(input2), ([_1, input3]) => If(TemplateBody(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If(If(TemplateSpan(input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If(If(TemplateSpan(input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => []))), ([_0, input2]) => [TemplateBodyMapping(_0), input2]), TemplateLiteralTypes = (input) => If(If(Const("`", input), ([_0, input2]) => If(TemplateBody(input2), ([_1, input3]) => If(Const("`", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [TemplateLiteralTypesMapping(_0), input2]), TemplateLiteral = (input) => If(TemplateLiteralTypes(input), ([_0, input2]) => [TemplateLiteralMapping(_0), input2]), Dependent2 = (input) => If(If(If(Const("if", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("then", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => If(Const("else", input5), ([_4, input6]) => If(Type(input6), ([_5, input7]) => [[_0, _1, _2, _3, _4, _5], input7])))))), ([_0, input2]) => [_0, input2], () => If(If(Const("if", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("then", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [DependentMapping(_0), input2]), LiteralBigInt = (input) => If(BigInt3(input), ([_0, input2]) => [LiteralBigIntMapping(_0), input2]), LiteralBoolean = (input) => If(If(Const("true", input), ([_0, input2]) => [_0, input2], () => If(Const("false", input), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [LiteralBooleanMapping(_0), input2]), LiteralNumber = (input) => If(Number3(input), ([_0, input2]) => [LiteralNumberMapping(_0), input2]), LiteralString = (input) => If(String3(["'", '"'], input), ([_0, input2]) => [LiteralStringMapping(_0), input2]), KeyOf = (input) => If(If(If(Const("keyof", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [KeyOfMapping(_0), input2]), IndexArray_0 = (input, result = []) => If(If(If(Const("[", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("]", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If(If(Const("[", input), ([_0, input2]) => If(Const("]", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => IndexArray_0(input2, [...result, _0]), () => [result, input]), IndexArray = (input) => If(IndexArray_0(input), ([_0, input2]) => [IndexArrayMapping(_0), input2]), Extends2 = (input) => If(If(If(Const("extends", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("?", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => If(Const(":", input5), ([_4, input6]) => If(Type(input6), ([_5, input7]) => [[_0, _1, _2, _3, _4, _5], input7])))))), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ExtendsMapping(_0), input2]), Base = (input) => If(If(If(Const("(", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const(")", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If(KeywordString(input), ([_0, input2]) => [_0, input2], () => If(KeywordNumber(input), ([_0, input2]) => [_0, input2], () => If(KeywordBoolean(input), ([_0, input2]) => [_0, input2], () => If(KeywordUndefined(input), ([_0, input2]) => [_0, input2], () => If(KeywordNull(input), ([_0, input2]) => [_0, input2], () => If(KeywordInteger(input), ([_0, input2]) => [_0, input2], () => If(KeywordBigInt(input), ([_0, input2]) => [_0, input2], () => If(KeywordUnknown(input), ([_0, input2]) => [_0, input2], () => If(KeywordAny(input), ([_0, input2]) => [_0, input2], () => If(KeywordObject(input), ([_0, input2]) => [_0, input2], () => If(KeywordNever(input), ([_0, input2]) => [_0, input2], () => If(KeywordSymbol(input), ([_0, input2]) => [_0, input2], () => If(KeywordVoid(input), ([_0, input2]) => [_0, input2], () => If(KeywordThis(input), ([_0, input2]) => [_0, input2], () => If(LiteralBigInt(input), ([_0, input2]) => [_0, input2], () => If(LiteralBoolean(input), ([_0, input2]) => [_0, input2], () => If(LiteralNumber(input), ([_0, input2]) => [_0, input2], () => If(LiteralString(input), ([_0, input2]) => [_0, input2], () => If(TemplateLiteral(input), ([_0, input2]) => [_0, input2], () => If(Dependent2(input), ([_0, input2]) => [_0, input2], () => If(_Object_2(input), ([_0, input2]) => [_0, input2], () => If(_Tuple_(input), ([_0, input2]) => [_0, input2], () => If(_Constructor_(input), ([_0, input2]) => [_0, input2], () => If(_Function_2(input), ([_0, input2]) => [_0, input2], () => If(_Mapped_(input), ([_0, input2]) => [_0, input2], () => If(GenericCall(input), ([_0, input2]) => [_0, input2], () => If(Reference(input), ([_0, input2]) => [_0, input2], () => [])))))))))))))))))))))))))))), ([_0, input2]) => [BaseMapping(_0), input2]), With = (input) => If(If(If(Const("with", input), ([_0, input2]) => If(WithObject(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [WithMapping(_0), input2]), Factor = (input) => If(If(KeyOf(input), ([_0, input2]) => If(Base(input2), ([_1, input3]) => If(IndexArray(input3), ([_2, input4]) => If(Extends2(input4), ([_3, input5]) => If(With(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [FactorMapping(_0), input2]), ExprTermTail = (input) => If(If(If(Const("&", input), ([_0, input2]) => If(Factor(input2), ([_1, input3]) => If(ExprTermTail(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ExprTermTailMapping(_0), input2]), ExprTerm = (input) => If(If(Factor(input), ([_0, input2]) => If(ExprTermTail(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ExprTermMapping(_0), input2]), ExprTail = (input) => If(If(If(Const("|", input), ([_0, input2]) => If(ExprTerm(input2), ([_1, input3]) => If(ExprTail(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ExprTailMapping(_0), input2]), Expr = (input) => If(If(ExprTerm(input), ([_0, input2]) => If(ExprTail(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ExprMapping(_0), input2]), ExprReadonly = (input) => If(If(Const("readonly", input), ([_0, input2]) => If(Expr(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ExprReadonlyMapping(_0), input2]), ExprPipe = (input) => If(If(Const("|", input), ([_0, input2]) => If(Expr(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ExprPipeMapping(_0), input2]), GenericType = (input) => If(If(GenericParameters(input), ([_0, input2]) => If(Const("=", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [GenericTypeMapping(_0), input2]), InferType = (input) => If(If(If(Const("infer", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(Const("extends", input3), ([_2, input4]) => If(Expr(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [_0, input2], () => If(If(Const("infer", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [InferTypeMapping(_0), input2]), Type = (input) => If(If(InferType(input), ([_0, input2]) => [_0, input2], () => If(ExprPipe(input), ([_0, input2]) => [_0, input2], () => If(ExprReadonly(input), ([_0, input2]) => [_0, input2], () => If(Expr(input), ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [TypeMapping(_0), input2]), PropertyKeyNumber = (input) => If(Number3(input), ([_0, input2]) => [PropertyKeyNumberMapping(_0), input2]), PropertyKeyIdent = (input) => If(Ident(input), ([_0, input2]) => [PropertyKeyIdentMapping(_0), input2]), PropertyKeyQuoted = (input) => If(String3(["'", '"'], input), ([_0, input2]) => [PropertyKeyQuotedMapping(_0), input2]), PropertyKeyIndex = (input) => If(If(Const("[", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(Const(":", input3), ([_2, input4]) => If(If(KeywordInteger(input4), ([_02, input5]) => [_02, input5], () => If(KeywordNumber(input4), ([_02, input5]) => [_02, input5], () => If(KeywordString(input4), ([_02, input5]) => [_02, input5], () => If(KeywordSymbol(input4), ([_02, input5]) => [_02, input5], () => [])))), ([_3, input5]) => If(Const("]", input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [PropertyKeyIndexMapping(_0), input2]), PropertyKey = (input) => If(If(PropertyKeyNumber(input), ([_0, input2]) => [_0, input2], () => If(PropertyKeyIdent(input), ([_0, input2]) => [_0, input2], () => If(PropertyKeyQuoted(input), ([_0, input2]) => [_0, input2], () => If(PropertyKeyIndex(input), ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [PropertyKeyMapping(_0), input2]), Readonly2 = (input) => If(If(If(Const("readonly", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ReadonlyMapping(_0), input2]), Optional3 = (input) => If(If(If(Const("?", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [OptionalMapping(_0), input2]), Property = (input) => If(If(Readonly2(input), ([_0, input2]) => If(PropertyKey(input2), ([_1, input3]) => If(Optional3(input3), ([_2, input4]) => If(Const(":", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [PropertyMapping(_0), input2]), PropertyDelimiter = (input) => If(If(If(Const(",", input), ([_0, input2]) => If(Const(`
-`, input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const(";", input), ([_0, input2]) => If(Const(`
-`, input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const(",", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If(If(Const(";", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If(If(Const(`
-`, input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => []))))), ([_0, input2]) => [PropertyDelimiterMapping(_0), input2]), PropertyList_0 = (input, result = []) => If(If(Property(input), ([_0, input2]) => If(PropertyDelimiter(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => PropertyList_0(input2, [...result, _0]), () => [result, input]), PropertyList = (input) => If(If(PropertyList_0(input), ([_0, input2]) => If(If(If(Property(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [PropertyListMapping(_0), input2]), Properties = (input) => If(If(Const("{", input), ([_0, input2]) => If(PropertyList(input2), ([_1, input3]) => If(Const("}", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [PropertiesMapping(_0), input2]), _Object_2 = (input) => If(Properties(input), ([_0, input2]) => [_Object_Mapping(_0), input2]), ElementNamed = (input) => If(If(If(Ident(input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => If(Const(":", input3), ([_2, input4]) => If(Const("readonly", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [_0, input2], () => If(If(Ident(input), ([_0, input2]) => If(Const(":", input2), ([_1, input3]) => If(Const("readonly", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [_0, input2], () => If(If(Ident(input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => If(Const(":", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [_0, input2], () => If(If(Ident(input), ([_0, input2]) => If(Const(":", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [ElementNamedMapping(_0), input2]), ElementReadonlyOptional = (input) => If(If(Const("readonly", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => If(Const("?", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [ElementReadonlyOptionalMapping(_0), input2]), ElementReadonly = (input) => If(If(Const("readonly", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ElementReadonlyMapping(_0), input2]), ElementOptional = (input) => If(If(Type(input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ElementOptionalMapping(_0), input2]), ElementBase = (input) => If(If(ElementNamed(input), ([_0, input2]) => [_0, input2], () => If(ElementReadonlyOptional(input), ([_0, input2]) => [_0, input2], () => If(ElementReadonly(input), ([_0, input2]) => [_0, input2], () => If(ElementOptional(input), ([_0, input2]) => [_0, input2], () => If(Type(input), ([_0, input2]) => [_0, input2], () => []))))), ([_0, input2]) => [ElementBaseMapping(_0), input2]), Element = (input) => If(If(If(Const("...", input), ([_0, input2]) => If(ElementBase(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(ElementBase(input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ElementMapping(_0), input2]), ElementList_0 = (input, result = []) => If(If(Element(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => ElementList_0(input2, [...result, _0]), () => [result, input]), ElementList = (input) => If(If(ElementList_0(input), ([_0, input2]) => If(If(If(Element(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ElementListMapping(_0), input2]), _Tuple_ = (input) => If(If(Const("[", input), ([_0, input2]) => If(ElementList(input2), ([_1, input3]) => If(Const("]", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_Tuple_Mapping(_0), input2]), ParameterReadonlyOptional = (input) => If(If(Ident(input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => If(Const(":", input3), ([_2, input4]) => If(Const("readonly", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [ParameterReadonlyOptionalMapping(_0), input2]), ParameterReadonly = (input) => If(If(Ident(input), ([_0, input2]) => If(Const(":", input2), ([_1, input3]) => If(Const("readonly", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [ParameterReadonlyMapping(_0), input2]), ParameterOptional = (input) => If(If(Ident(input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => If(Const(":", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [ParameterOptionalMapping(_0), input2]), ParameterType = (input) => If(If(Ident(input), ([_0, input2]) => If(Const(":", input2), ([_1, input3]) => If(Type(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [ParameterTypeMapping(_0), input2]), ParameterBase = (input) => If(If(ParameterReadonlyOptional(input), ([_0, input2]) => [_0, input2], () => If(ParameterReadonly(input), ([_0, input2]) => [_0, input2], () => If(ParameterOptional(input), ([_0, input2]) => [_0, input2], () => If(ParameterType(input), ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [ParameterBaseMapping(_0), input2]), Parameter2 = (input) => If(If(If(Const("...", input), ([_0, input2]) => If(ParameterBase(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(ParameterBase(input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ParameterMapping(_0), input2]), ParameterList_0 = (input, result = []) => If(If(Parameter2(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => ParameterList_0(input2, [...result, _0]), () => [result, input]), ParameterList = (input) => If(If(ParameterList_0(input), ([_0, input2]) => If(If(If(Parameter2(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ParameterListMapping(_0), input2]), _Function_2 = (input) => If(If(Const("(", input), ([_0, input2]) => If(ParameterList(input2), ([_1, input3]) => If(Const(")", input3), ([_2, input4]) => If(Const("=>", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [_Function_Mapping(_0), input2]), _Constructor_ = (input) => If(If(Const("new", input), ([_0, input2]) => If(Const("(", input2), ([_1, input3]) => If(ParameterList(input3), ([_2, input4]) => If(Const(")", input4), ([_3, input5]) => If(Const("=>", input5), ([_4, input6]) => If(Type(input6), ([_5, input7]) => [[_0, _1, _2, _3, _4, _5], input7])))))), ([_0, input2]) => [_Constructor_Mapping(_0), input2]), MappedReadonly = (input) => If(If(If(Const("+", input), ([_0, input2]) => If(Const("readonly", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const("-", input), ([_0, input2]) => If(Const("readonly", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const("readonly", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [MappedReadonlyMapping(_0), input2]), MappedOptional = (input) => If(If(If(Const("+", input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const("-", input), ([_0, input2]) => If(Const("?", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const("?", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])))), ([_0, input2]) => [MappedOptionalMapping(_0), input2]), MappedAs = (input) => If(If(If(Const("as", input), ([_0, input2]) => If(Type(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [MappedAsMapping(_0), input2]), _Mapped_ = (input) => If(If(Const("{", input), ([_0, input2]) => If(MappedReadonly(input2), ([_1, input3]) => If(Const("[", input3), ([_2, input4]) => If(Ident(input4), ([_3, input5]) => If(Const("in", input5), ([_4, input6]) => If(Type(input6), ([_5, input7]) => If(MappedAs(input7), ([_6, input8]) => If(Const("]", input8), ([_7, input9]) => If(MappedOptional(input9), ([_8, input10]) => If(Const(":", input10), ([_9, input11]) => If(Type(input11), ([_10, input12]) => If(OptionalSemiColon(input12), ([_11, input13]) => If(Const("}", input13), ([_12, input14]) => [[_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12], input14]))))))))))))), ([_0, input2]) => [_Mapped_Mapping(_0), input2]), Reference = (input) => If(Ident(input), ([_0, input2]) => [ReferenceMapping(_0), input2]), WithBigInt = (input) => If(BigInt3(input), ([_0, input2]) => [WithBigIntMapping(_0), input2]), WithNumber = (input) => If(Number3(input), ([_0, input2]) => [WithNumberMapping(_0), input2]), WithBoolean = (input) => If(If(Const("true", input), ([_0, input2]) => [_0, input2], () => If(Const("false", input), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [WithBooleanMapping(_0), input2]), WithString = (input) => If(String3(['"', "'"], input), ([_0, input2]) => [WithStringMapping(_0), input2]), WithNull = (input) => If(Const("null", input), ([_0, input2]) => [WithNullMapping(_0), input2]), WithUndefined = (input) => If(Const("undefined", input), ([_0, input2]) => [WithUndefinedMapping(_0), input2]), WithProperty = (input) => If(If(PropertyKey(input), ([_0, input2]) => If(Const(":", input2), ([_1, input3]) => If(WithValue(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [WithPropertyMapping(_0), input2]), WithPropertyList_0 = (input, result = []) => If(If(WithProperty(input), ([_0, input2]) => If(PropertyDelimiter(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => WithPropertyList_0(input2, [...result, _0]), () => [result, input]), WithPropertyList = (input) => If(If(WithPropertyList_0(input), ([_0, input2]) => If(If(If(WithProperty(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [WithPropertyListMapping(_0), input2]), WithObject = (input) => If(If(Const("{", input), ([_0, input2]) => If(WithPropertyList(input2), ([_1, input3]) => If(Const("}", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [WithObjectMapping(_0), input2]), WithElementList_0 = (input, result = []) => If(If(WithValue(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => WithElementList_0(input2, [...result, _0]), () => [result, input]), WithElementList = (input) => If(If(WithElementList_0(input), ([_0, input2]) => If(If(If(WithValue(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [WithElementListMapping(_0), input2]), WithArray = (input) => If(If(Const("[", input), ([_0, input2]) => If(WithElementList(input2), ([_1, input3]) => If(Const("]", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [WithArrayMapping(_0), input2]), WithValue = (input) => If(If(WithBigInt(input), ([_0, input2]) => [_0, input2], () => If(WithNumber(input), ([_0, input2]) => [_0, input2], () => If(WithBoolean(input), ([_0, input2]) => [_0, input2], () => If(WithString(input), ([_0, input2]) => [_0, input2], () => If(WithNull(input), ([_0, input2]) => [_0, input2], () => If(WithUndefined(input), ([_0, input2]) => [_0, input2], () => If(WithObject(input), ([_0, input2]) => [_0, input2], () => If(WithArray(input), ([_0, input2]) => [_0, input2], () => [])))))))), ([_0, input2]) => [WithValueMapping(_0), input2]), PatternBigInt = (input) => If(Const("-?(?:0|[1-9][0-9]*)n", input), ([_0, input2]) => [PatternBigIntMapping(_0), input2]), PatternString = (input) => If(Const(".*", input), ([_0, input2]) => [PatternStringMapping(_0), input2]), PatternNumber = (input) => If(Const("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?", input), ([_0, input2]) => [PatternNumberMapping(_0), input2]), PatternInteger = (input) => If(Const("-?(?:0|[1-9][0-9]*)", input), ([_0, input2]) => [PatternIntegerMapping(_0), input2]), PatternNever = (input) => If(Const("(?!)", input), ([_0, input2]) => [PatternNeverMapping(_0), input2]), PatternText = (input) => If(Until_1(["-?(?:0|[1-9][0-9]*)n", ".*", "-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?", "-?(?:0|[1-9][0-9]*)", "(?!)", "(", ")", "$", "|"], input), ([_0, input2]) => [PatternTextMapping(_0), input2]), PatternBase = (input) => If(If(PatternBigInt(input), ([_0, input2]) => [_0, input2], () => If(PatternString(input), ([_0, input2]) => [_0, input2], () => If(PatternNumber(input), ([_0, input2]) => [_0, input2], () => If(PatternInteger(input), ([_0, input2]) => [_0, input2], () => If(PatternNever(input), ([_0, input2]) => [_0, input2], () => If(PatternGroup(input), ([_0, input2]) => [_0, input2], () => If(PatternText(input), ([_0, input2]) => [_0, input2], () => []))))))), ([_0, input2]) => [PatternBaseMapping(_0), input2]), PatternGroup = (input) => If(If(Const("(", input), ([_0, input2]) => If(PatternBody(input2), ([_1, input3]) => If(Const(")", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [PatternGroupMapping(_0), input2]), PatternUnion = (input) => If(If(If(PatternTerm(input), ([_0, input2]) => If(Const("|", input2), ([_1, input3]) => If(PatternUnion(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [_0, input2], () => If(If(PatternTerm(input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => []))), ([_0, input2]) => [PatternUnionMapping(_0), input2]), PatternTerm = (input) => If(If(PatternBase(input), ([_0, input2]) => If(PatternBody(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [PatternTermMapping(_0), input2]), PatternBody = (input) => If(If(PatternUnion(input), ([_0, input2]) => [_0, input2], () => If(PatternTerm(input), ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [PatternBodyMapping(_0), input2]), Pattern = (input) => If(If(Const("^", input), ([_0, input2]) => If(PatternBody(input2), ([_1, input3]) => If(Const("$", input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [PatternMapping(_0), input2]), InterfaceDeclarationHeritageList_0 = (input, result = []) => If(If(Type(input), ([_0, input2]) => If(Const(",", input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => InterfaceDeclarationHeritageList_0(input2, [...result, _0]), () => [result, input]), InterfaceDeclarationHeritageList = (input) => If(If(InterfaceDeclarationHeritageList_0(input), ([_0, input2]) => If(If(If(Type(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [InterfaceDeclarationHeritageListMapping(_0), input2]), InterfaceDeclarationHeritage = (input) => If(If(If(Const("extends", input), ([_0, input2]) => If(InterfaceDeclarationHeritageList(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [InterfaceDeclarationHeritageMapping(_0), input2]), InterfaceDeclarationGeneric = (input) => If(If(Const("interface", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(GenericParameters(input3), ([_2, input4]) => If(InterfaceDeclarationHeritage(input4), ([_3, input5]) => If(Properties(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [InterfaceDeclarationGenericMapping(_0), input2]), InterfaceDeclaration = (input) => If(If(Const("interface", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(InterfaceDeclarationHeritage(input3), ([_2, input4]) => If(Properties(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [InterfaceDeclarationMapping(_0), input2]), TypeAliasDeclarationGeneric = (input) => If(If(Const("type", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(GenericParameters(input3), ([_2, input4]) => If(Const("=", input4), ([_3, input5]) => If(Type(input5), ([_4, input6]) => [[_0, _1, _2, _3, _4], input6]))))), ([_0, input2]) => [TypeAliasDeclarationGenericMapping(_0), input2]), TypeAliasDeclaration = (input) => If(If(Const("type", input), ([_0, input2]) => If(Ident(input2), ([_1, input3]) => If(Const("=", input3), ([_2, input4]) => If(Type(input4), ([_3, input5]) => [[_0, _1, _2, _3], input5])))), ([_0, input2]) => [TypeAliasDeclarationMapping(_0), input2]), ExportKeyword = (input) => If(If(If(Const("export", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If([[], input], ([_0, input2]) => [_0, input2], () => [])), ([_0, input2]) => [ExportKeywordMapping(_0), input2]), ModuleDeclarationDelimiter = (input) => If(If(If(Const(";", input), ([_0, input2]) => If(Const(`
-`, input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [_0, input2], () => If(If(Const(";", input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => If(If(Const(`
-`, input), ([_0, input2]) => [[_0], input2]), ([_0, input2]) => [_0, input2], () => []))), ([_0, input2]) => [ModuleDeclarationDelimiterMapping(_0), input2]), ModuleDeclarationList_0 = (input, result = []) => If(If(ModuleDeclaration(input), ([_0, input2]) => If(ModuleDeclarationDelimiter(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => ModuleDeclarationList_0(input2, [...result, _0]), () => [result, input]), ModuleDeclarationList = (input) => If(If(ModuleDeclarationList_0(input), ([_0, input2]) => If(If(If(ModuleDeclaration(input2), ([_02, input3]) => [[_02], input3]), ([_02, input3]) => [_02, input3], () => If([[], input2], ([_02, input3]) => [_02, input3], () => [])), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ModuleDeclarationListMapping(_0), input2]), ModuleDeclaration = (input) => If(If(ExportKeyword(input), ([_0, input2]) => If(If(InterfaceDeclarationGeneric(input2), ([_02, input3]) => [_02, input3], () => If(InterfaceDeclaration(input2), ([_02, input3]) => [_02, input3], () => If(TypeAliasDeclarationGeneric(input2), ([_02, input3]) => [_02, input3], () => If(TypeAliasDeclaration(input2), ([_02, input3]) => [_02, input3], () => [])))), ([_1, input3]) => If(OptionalSemiColon(input3), ([_2, input4]) => [[_0, _1, _2], input4]))), ([_0, input2]) => [ModuleDeclarationMapping(_0), input2]), Module = (input) => If(If(ModuleDeclaration(input), ([_0, input2]) => If(ModuleDeclarationList(input2), ([_1, input3]) => [[_0, _1], input3])), ([_0, input2]) => [ModuleMapping(_0), input2]), Script = (input) => If(If(Module(input), ([_0, input2]) => [_0, input2], () => If(GenericType(input), ([_0, input2]) => [_0, input2], () => If(Type(input), ([_0, input2]) => [_0, input2], () => []))), ([_0, input2]) => [ScriptMapping(_0), input2]);
+var If = (result, left, right = () => []) => result.length === 2 ? left(result) : right(), GenericParameterExtendsEquals = (input) => If(If(Ident(input), ([_0, input]) => If(Const("extends", input), ([_1, input]) => If(Type(input), ([_2, input]) => If(Const("=", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [GenericParameterExtendsEqualsMapping(_0), input]), GenericParameterExtends = (input) => If(If(Ident(input), ([_0, input]) => If(Const("extends", input), ([_1, input]) => If(Type(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [GenericParameterExtendsMapping(_0), input]), GenericParameterEquals = (input) => If(If(Ident(input), ([_0, input]) => If(Const("=", input), ([_1, input]) => If(Type(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [GenericParameterEqualsMapping(_0), input]), GenericParameterIdentifier = (input) => If(Ident(input), ([_0, input]) => [GenericParameterIdentifierMapping(_0), input]), GenericParameter = (input) => If(If(GenericParameterExtendsEquals(input), ([_0, input]) => [_0, input], () => If(GenericParameterExtends(input), ([_0, input]) => [_0, input], () => If(GenericParameterEquals(input), ([_0, input]) => [_0, input], () => If(GenericParameterIdentifier(input), ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [GenericParameterMapping(_0), input]), GenericParameterList_0 = (input, result = []) => If(If(GenericParameter(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => GenericParameterList_0(input, [...result, _0]), () => [result, input]), GenericParameterList = (input) => If(If(GenericParameterList_0(input), ([_0, input]) => If(If(If(GenericParameter(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [GenericParameterListMapping(_0), input]), GenericParameters = (input) => If(If(Const("<", input), ([_0, input]) => If(GenericParameterList(input), ([_1, input]) => If(Const(">", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [GenericParametersMapping(_0), input]), GenericCallArgumentList_0 = (input, result = []) => If(If(Type(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => GenericCallArgumentList_0(input, [...result, _0]), () => [result, input]), GenericCallArgumentList = (input) => If(If(GenericCallArgumentList_0(input), ([_0, input]) => If(If(If(Type(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [GenericCallArgumentListMapping(_0), input]), GenericCallArguments = (input) => If(If(Const("<", input), ([_0, input]) => If(GenericCallArgumentList(input), ([_1, input]) => If(Const(">", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [GenericCallArgumentsMapping(_0), input]), GenericCall = (input) => If(If(Ident(input), ([_0, input]) => If(GenericCallArguments(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [GenericCallMapping(_0), input]), OptionalSemiColon = (input) => If(If(If(Const(";", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [OptionalSemiColonMapping(_0), input]), KeywordString = (input) => If(Const("string", input), ([_0, input]) => [KeywordStringMapping(_0), input]), KeywordNumber = (input) => If(Const("number", input), ([_0, input]) => [KeywordNumberMapping(_0), input]), KeywordBoolean = (input) => If(Const("boolean", input), ([_0, input]) => [KeywordBooleanMapping(_0), input]), KeywordUndefined = (input) => If(Const("undefined", input), ([_0, input]) => [KeywordUndefinedMapping(_0), input]), KeywordNull = (input) => If(Const("null", input), ([_0, input]) => [KeywordNullMapping(_0), input]), KeywordInteger = (input) => If(Const("integer", input), ([_0, input]) => [KeywordIntegerMapping(_0), input]), KeywordBigInt = (input) => If(Const("bigint", input), ([_0, input]) => [KeywordBigIntMapping(_0), input]), KeywordUnknown = (input) => If(Const("unknown", input), ([_0, input]) => [KeywordUnknownMapping(_0), input]), KeywordAny = (input) => If(Const("any", input), ([_0, input]) => [KeywordAnyMapping(_0), input]), KeywordObject = (input) => If(Const("object", input), ([_0, input]) => [KeywordObjectMapping(_0), input]), KeywordNever = (input) => If(Const("never", input), ([_0, input]) => [KeywordNeverMapping(_0), input]), KeywordSymbol = (input) => If(Const("symbol", input), ([_0, input]) => [KeywordSymbolMapping(_0), input]), KeywordVoid = (input) => If(Const("void", input), ([_0, input]) => [KeywordVoidMapping(_0), input]), KeywordThis = (input) => If(Const("this", input), ([_0, input]) => [KeywordThisMapping(_0), input]), TemplateInterpolate = (input) => If(If(Const("${", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("}", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [TemplateInterpolateMapping(_0), input]), TemplateSpan = (input) => If(Until(["${", "`"], input), ([_0, input]) => [TemplateSpanMapping(_0), input]), TemplateBody = (input) => If(If(If(TemplateSpan(input), ([_0, input]) => If(TemplateInterpolate(input), ([_1, input]) => If(TemplateBody(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If(If(TemplateSpan(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If(If(TemplateSpan(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => []))), ([_0, input]) => [TemplateBodyMapping(_0), input]), TemplateLiteralTypes = (input) => If(If(Const("`", input), ([_0, input]) => If(TemplateBody(input), ([_1, input]) => If(Const("`", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [TemplateLiteralTypesMapping(_0), input]), TemplateLiteral = (input) => If(TemplateLiteralTypes(input), ([_0, input]) => [TemplateLiteralMapping(_0), input]), Dependent2 = (input) => If(If(If(Const("if", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("then", input), ([_2, input]) => If(Type(input), ([_3, input]) => If(Const("else", input), ([_4, input]) => If(Type(input), ([_5, input]) => [[_0, _1, _2, _3, _4, _5], input])))))), ([_0, input]) => [_0, input], () => If(If(Const("if", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("then", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [DependentMapping(_0), input]), LiteralBigInt = (input) => If(BigInt3(input), ([_0, input]) => [LiteralBigIntMapping(_0), input]), LiteralBoolean = (input) => If(If(Const("true", input), ([_0, input]) => [_0, input], () => If(Const("false", input), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [LiteralBooleanMapping(_0), input]), LiteralNumber = (input) => If(Number3(input), ([_0, input]) => [LiteralNumberMapping(_0), input]), LiteralString = (input) => If(String3(["'", '"'], input), ([_0, input]) => [LiteralStringMapping(_0), input]), KeyOf = (input) => If(If(If(Const("keyof", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [KeyOfMapping(_0), input]), IndexArray_0 = (input, result = []) => If(If(If(Const("[", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("]", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If(If(Const("[", input), ([_0, input]) => If(Const("]", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => IndexArray_0(input, [...result, _0]), () => [result, input]), IndexArray = (input) => If(IndexArray_0(input), ([_0, input]) => [IndexArrayMapping(_0), input]), Extends2 = (input) => If(If(If(Const("extends", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("?", input), ([_2, input]) => If(Type(input), ([_3, input]) => If(Const(":", input), ([_4, input]) => If(Type(input), ([_5, input]) => [[_0, _1, _2, _3, _4, _5], input])))))), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ExtendsMapping(_0), input]), Base = (input) => If(If(If(Const("(", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const(")", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If(KeywordString(input), ([_0, input]) => [_0, input], () => If(KeywordNumber(input), ([_0, input]) => [_0, input], () => If(KeywordBoolean(input), ([_0, input]) => [_0, input], () => If(KeywordUndefined(input), ([_0, input]) => [_0, input], () => If(KeywordNull(input), ([_0, input]) => [_0, input], () => If(KeywordInteger(input), ([_0, input]) => [_0, input], () => If(KeywordBigInt(input), ([_0, input]) => [_0, input], () => If(KeywordUnknown(input), ([_0, input]) => [_0, input], () => If(KeywordAny(input), ([_0, input]) => [_0, input], () => If(KeywordObject(input), ([_0, input]) => [_0, input], () => If(KeywordNever(input), ([_0, input]) => [_0, input], () => If(KeywordSymbol(input), ([_0, input]) => [_0, input], () => If(KeywordVoid(input), ([_0, input]) => [_0, input], () => If(KeywordThis(input), ([_0, input]) => [_0, input], () => If(LiteralBigInt(input), ([_0, input]) => [_0, input], () => If(LiteralBoolean(input), ([_0, input]) => [_0, input], () => If(LiteralNumber(input), ([_0, input]) => [_0, input], () => If(LiteralString(input), ([_0, input]) => [_0, input], () => If(TemplateLiteral(input), ([_0, input]) => [_0, input], () => If(Dependent2(input), ([_0, input]) => [_0, input], () => If(_Object_2(input), ([_0, input]) => [_0, input], () => If(_Tuple_(input), ([_0, input]) => [_0, input], () => If(_Constructor_(input), ([_0, input]) => [_0, input], () => If(_Function_2(input), ([_0, input]) => [_0, input], () => If(_Mapped_(input), ([_0, input]) => [_0, input], () => If(GenericCall(input), ([_0, input]) => [_0, input], () => If(Reference(input), ([_0, input]) => [_0, input], () => [])))))))))))))))))))))))))))), ([_0, input]) => [BaseMapping(_0), input]), With = (input) => If(If(If(Const("with", input), ([_0, input]) => If(WithObject(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [WithMapping(_0), input]), Factor = (input) => If(If(KeyOf(input), ([_0, input]) => If(Base(input), ([_1, input]) => If(IndexArray(input), ([_2, input]) => If(Extends2(input), ([_3, input]) => If(With(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [FactorMapping(_0), input]), ExprTermTail = (input) => If(If(If(Const("&", input), ([_0, input]) => If(Factor(input), ([_1, input]) => If(ExprTermTail(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ExprTermTailMapping(_0), input]), ExprTerm = (input) => If(If(Factor(input), ([_0, input]) => If(ExprTermTail(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ExprTermMapping(_0), input]), ExprTail = (input) => If(If(If(Const("|", input), ([_0, input]) => If(ExprTerm(input), ([_1, input]) => If(ExprTail(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ExprTailMapping(_0), input]), Expr = (input) => If(If(ExprTerm(input), ([_0, input]) => If(ExprTail(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ExprMapping(_0), input]), ExprReadonly = (input) => If(If(Const("readonly", input), ([_0, input]) => If(Expr(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ExprReadonlyMapping(_0), input]), ExprPipe = (input) => If(If(Const("|", input), ([_0, input]) => If(Expr(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ExprPipeMapping(_0), input]), GenericType = (input) => If(If(GenericParameters(input), ([_0, input]) => If(Const("=", input), ([_1, input]) => If(Type(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [GenericTypeMapping(_0), input]), InferType = (input) => If(If(If(Const("infer", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(Const("extends", input), ([_2, input]) => If(Expr(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [_0, input], () => If(If(Const("infer", input), ([_0, input]) => If(Ident(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [InferTypeMapping(_0), input]), Type = (input) => If(If(InferType(input), ([_0, input]) => [_0, input], () => If(ExprPipe(input), ([_0, input]) => [_0, input], () => If(ExprReadonly(input), ([_0, input]) => [_0, input], () => If(Expr(input), ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [TypeMapping(_0), input]), PropertyKeyNumber = (input) => If(Number3(input), ([_0, input]) => [PropertyKeyNumberMapping(_0), input]), PropertyKeyIdent = (input) => If(Ident(input), ([_0, input]) => [PropertyKeyIdentMapping(_0), input]), PropertyKeyQuoted = (input) => If(String3(["'", '"'], input), ([_0, input]) => [PropertyKeyQuotedMapping(_0), input]), PropertyKeyIndex = (input) => If(If(Const("[", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(Const(":", input), ([_2, input]) => If(If(KeywordInteger(input), ([_0, input]) => [_0, input], () => If(KeywordNumber(input), ([_0, input]) => [_0, input], () => If(KeywordString(input), ([_0, input]) => [_0, input], () => If(KeywordSymbol(input), ([_0, input]) => [_0, input], () => [])))), ([_3, input]) => If(Const("]", input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [PropertyKeyIndexMapping(_0), input]), PropertyKey = (input) => If(If(PropertyKeyNumber(input), ([_0, input]) => [_0, input], () => If(PropertyKeyIdent(input), ([_0, input]) => [_0, input], () => If(PropertyKeyQuoted(input), ([_0, input]) => [_0, input], () => If(PropertyKeyIndex(input), ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [PropertyKeyMapping(_0), input]), Readonly2 = (input) => If(If(If(Const("readonly", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ReadonlyMapping(_0), input]), Optional3 = (input) => If(If(If(Const("?", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [OptionalMapping(_0), input]), Property = (input) => If(If(Readonly2(input), ([_0, input]) => If(PropertyKey(input), ([_1, input]) => If(Optional3(input), ([_2, input]) => If(Const(":", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [PropertyMapping(_0), input]), PropertyDelimiter = (input) => If(If(If(Const(",", input), ([_0, input]) => If(Const(`
+`, input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const(";", input), ([_0, input]) => If(Const(`
+`, input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const(",", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If(If(Const(";", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If(If(Const(`
+`, input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => []))))), ([_0, input]) => [PropertyDelimiterMapping(_0), input]), PropertyList_0 = (input, result = []) => If(If(Property(input), ([_0, input]) => If(PropertyDelimiter(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => PropertyList_0(input, [...result, _0]), () => [result, input]), PropertyList = (input) => If(If(PropertyList_0(input), ([_0, input]) => If(If(If(Property(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [PropertyListMapping(_0), input]), Properties = (input) => If(If(Const("{", input), ([_0, input]) => If(PropertyList(input), ([_1, input]) => If(Const("}", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [PropertiesMapping(_0), input]), _Object_2 = (input) => If(Properties(input), ([_0, input]) => [_Object_Mapping(_0), input]), ElementNamed = (input) => If(If(If(Ident(input), ([_0, input]) => If(Const("?", input), ([_1, input]) => If(Const(":", input), ([_2, input]) => If(Const("readonly", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [_0, input], () => If(If(Ident(input), ([_0, input]) => If(Const(":", input), ([_1, input]) => If(Const("readonly", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [_0, input], () => If(If(Ident(input), ([_0, input]) => If(Const("?", input), ([_1, input]) => If(Const(":", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [_0, input], () => If(If(Ident(input), ([_0, input]) => If(Const(":", input), ([_1, input]) => If(Type(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [ElementNamedMapping(_0), input]), ElementReadonlyOptional = (input) => If(If(Const("readonly", input), ([_0, input]) => If(Type(input), ([_1, input]) => If(Const("?", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [ElementReadonlyOptionalMapping(_0), input]), ElementReadonly = (input) => If(If(Const("readonly", input), ([_0, input]) => If(Type(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ElementReadonlyMapping(_0), input]), ElementOptional = (input) => If(If(Type(input), ([_0, input]) => If(Const("?", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ElementOptionalMapping(_0), input]), ElementBase = (input) => If(If(ElementNamed(input), ([_0, input]) => [_0, input], () => If(ElementReadonlyOptional(input), ([_0, input]) => [_0, input], () => If(ElementReadonly(input), ([_0, input]) => [_0, input], () => If(ElementOptional(input), ([_0, input]) => [_0, input], () => If(Type(input), ([_0, input]) => [_0, input], () => []))))), ([_0, input]) => [ElementBaseMapping(_0), input]), Element = (input) => If(If(If(Const("...", input), ([_0, input]) => If(ElementBase(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(ElementBase(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ElementMapping(_0), input]), ElementList_0 = (input, result = []) => If(If(Element(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => ElementList_0(input, [...result, _0]), () => [result, input]), ElementList = (input) => If(If(ElementList_0(input), ([_0, input]) => If(If(If(Element(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ElementListMapping(_0), input]), _Tuple_ = (input) => If(If(Const("[", input), ([_0, input]) => If(ElementList(input), ([_1, input]) => If(Const("]", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_Tuple_Mapping(_0), input]), ParameterReadonlyOptional = (input) => If(If(Ident(input), ([_0, input]) => If(Const("?", input), ([_1, input]) => If(Const(":", input), ([_2, input]) => If(Const("readonly", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [ParameterReadonlyOptionalMapping(_0), input]), ParameterReadonly = (input) => If(If(Ident(input), ([_0, input]) => If(Const(":", input), ([_1, input]) => If(Const("readonly", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [ParameterReadonlyMapping(_0), input]), ParameterOptional = (input) => If(If(Ident(input), ([_0, input]) => If(Const("?", input), ([_1, input]) => If(Const(":", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [ParameterOptionalMapping(_0), input]), ParameterType = (input) => If(If(Ident(input), ([_0, input]) => If(Const(":", input), ([_1, input]) => If(Type(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [ParameterTypeMapping(_0), input]), ParameterBase = (input) => If(If(ParameterReadonlyOptional(input), ([_0, input]) => [_0, input], () => If(ParameterReadonly(input), ([_0, input]) => [_0, input], () => If(ParameterOptional(input), ([_0, input]) => [_0, input], () => If(ParameterType(input), ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [ParameterBaseMapping(_0), input]), Parameter2 = (input) => If(If(If(Const("...", input), ([_0, input]) => If(ParameterBase(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(ParameterBase(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ParameterMapping(_0), input]), ParameterList_0 = (input, result = []) => If(If(Parameter2(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => ParameterList_0(input, [...result, _0]), () => [result, input]), ParameterList = (input) => If(If(ParameterList_0(input), ([_0, input]) => If(If(If(Parameter2(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ParameterListMapping(_0), input]), _Function_2 = (input) => If(If(Const("(", input), ([_0, input]) => If(ParameterList(input), ([_1, input]) => If(Const(")", input), ([_2, input]) => If(Const("=>", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [_Function_Mapping(_0), input]), _Constructor_ = (input) => If(If(Const("new", input), ([_0, input]) => If(Const("(", input), ([_1, input]) => If(ParameterList(input), ([_2, input]) => If(Const(")", input), ([_3, input]) => If(Const("=>", input), ([_4, input]) => If(Type(input), ([_5, input]) => [[_0, _1, _2, _3, _4, _5], input])))))), ([_0, input]) => [_Constructor_Mapping(_0), input]), MappedReadonly = (input) => If(If(If(Const("+", input), ([_0, input]) => If(Const("readonly", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const("-", input), ([_0, input]) => If(Const("readonly", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const("readonly", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [MappedReadonlyMapping(_0), input]), MappedOptional = (input) => If(If(If(Const("+", input), ([_0, input]) => If(Const("?", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const("-", input), ([_0, input]) => If(Const("?", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const("?", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])))), ([_0, input]) => [MappedOptionalMapping(_0), input]), MappedAs = (input) => If(If(If(Const("as", input), ([_0, input]) => If(Type(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [MappedAsMapping(_0), input]), _Mapped_ = (input) => If(If(Const("{", input), ([_0, input]) => If(MappedReadonly(input), ([_1, input]) => If(Const("[", input), ([_2, input]) => If(Ident(input), ([_3, input]) => If(Const("in", input), ([_4, input]) => If(Type(input), ([_5, input]) => If(MappedAs(input), ([_6, input]) => If(Const("]", input), ([_7, input]) => If(MappedOptional(input), ([_8, input]) => If(Const(":", input), ([_9, input]) => If(Type(input), ([_10, input]) => If(OptionalSemiColon(input), ([_11, input]) => If(Const("}", input), ([_12, input]) => [[_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12], input]))))))))))))), ([_0, input]) => [_Mapped_Mapping(_0), input]), Reference = (input) => If(Ident(input), ([_0, input]) => [ReferenceMapping(_0), input]), WithBigInt = (input) => If(BigInt3(input), ([_0, input]) => [WithBigIntMapping(_0), input]), WithNumber = (input) => If(Number3(input), ([_0, input]) => [WithNumberMapping(_0), input]), WithBoolean = (input) => If(If(Const("true", input), ([_0, input]) => [_0, input], () => If(Const("false", input), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [WithBooleanMapping(_0), input]), WithString = (input) => If(String3(['"', "'"], input), ([_0, input]) => [WithStringMapping(_0), input]), WithNull = (input) => If(Const("null", input), ([_0, input]) => [WithNullMapping(_0), input]), WithUndefined = (input) => If(Const("undefined", input), ([_0, input]) => [WithUndefinedMapping(_0), input]), WithProperty = (input) => If(If(PropertyKey(input), ([_0, input]) => If(Const(":", input), ([_1, input]) => If(WithValue(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [WithPropertyMapping(_0), input]), WithPropertyList_0 = (input, result = []) => If(If(WithProperty(input), ([_0, input]) => If(PropertyDelimiter(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => WithPropertyList_0(input, [...result, _0]), () => [result, input]), WithPropertyList = (input) => If(If(WithPropertyList_0(input), ([_0, input]) => If(If(If(WithProperty(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [WithPropertyListMapping(_0), input]), WithObject = (input) => If(If(Const("{", input), ([_0, input]) => If(WithPropertyList(input), ([_1, input]) => If(Const("}", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [WithObjectMapping(_0), input]), WithElementList_0 = (input, result = []) => If(If(WithValue(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => WithElementList_0(input, [...result, _0]), () => [result, input]), WithElementList = (input) => If(If(WithElementList_0(input), ([_0, input]) => If(If(If(WithValue(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [WithElementListMapping(_0), input]), WithArray = (input) => If(If(Const("[", input), ([_0, input]) => If(WithElementList(input), ([_1, input]) => If(Const("]", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [WithArrayMapping(_0), input]), WithValue = (input) => If(If(WithBigInt(input), ([_0, input]) => [_0, input], () => If(WithNumber(input), ([_0, input]) => [_0, input], () => If(WithBoolean(input), ([_0, input]) => [_0, input], () => If(WithString(input), ([_0, input]) => [_0, input], () => If(WithNull(input), ([_0, input]) => [_0, input], () => If(WithUndefined(input), ([_0, input]) => [_0, input], () => If(WithObject(input), ([_0, input]) => [_0, input], () => If(WithArray(input), ([_0, input]) => [_0, input], () => [])))))))), ([_0, input]) => [WithValueMapping(_0), input]), PatternBigInt = (input) => If(Const("-?(?:0|[1-9][0-9]*)n", input), ([_0, input]) => [PatternBigIntMapping(_0), input]), PatternString = (input) => If(Const(".*", input), ([_0, input]) => [PatternStringMapping(_0), input]), PatternNumber = (input) => If(Const("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?", input), ([_0, input]) => [PatternNumberMapping(_0), input]), PatternInteger = (input) => If(Const("-?(?:0|[1-9][0-9]*)", input), ([_0, input]) => [PatternIntegerMapping(_0), input]), PatternNever = (input) => If(Const("(?!)", input), ([_0, input]) => [PatternNeverMapping(_0), input]), PatternText = (input) => If(Until_1(["-?(?:0|[1-9][0-9]*)n", ".*", "-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?", "-?(?:0|[1-9][0-9]*)", "(?!)", "(", ")", "$", "|"], input), ([_0, input]) => [PatternTextMapping(_0), input]), PatternBase = (input) => If(If(PatternBigInt(input), ([_0, input]) => [_0, input], () => If(PatternString(input), ([_0, input]) => [_0, input], () => If(PatternNumber(input), ([_0, input]) => [_0, input], () => If(PatternInteger(input), ([_0, input]) => [_0, input], () => If(PatternNever(input), ([_0, input]) => [_0, input], () => If(PatternGroup(input), ([_0, input]) => [_0, input], () => If(PatternText(input), ([_0, input]) => [_0, input], () => []))))))), ([_0, input]) => [PatternBaseMapping(_0), input]), PatternGroup = (input) => If(If(Const("(", input), ([_0, input]) => If(PatternBody(input), ([_1, input]) => If(Const(")", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [PatternGroupMapping(_0), input]), PatternUnion = (input) => If(If(If(PatternTerm(input), ([_0, input]) => If(Const("|", input), ([_1, input]) => If(PatternUnion(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [_0, input], () => If(If(PatternTerm(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => []))), ([_0, input]) => [PatternUnionMapping(_0), input]), PatternTerm = (input) => If(If(PatternBase(input), ([_0, input]) => If(PatternBody(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [PatternTermMapping(_0), input]), PatternBody = (input) => If(If(PatternUnion(input), ([_0, input]) => [_0, input], () => If(PatternTerm(input), ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [PatternBodyMapping(_0), input]), Pattern = (input) => If(If(Const("^", input), ([_0, input]) => If(PatternBody(input), ([_1, input]) => If(Const("$", input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [PatternMapping(_0), input]), InterfaceDeclarationHeritageList_0 = (input, result = []) => If(If(Type(input), ([_0, input]) => If(Const(",", input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => InterfaceDeclarationHeritageList_0(input, [...result, _0]), () => [result, input]), InterfaceDeclarationHeritageList = (input) => If(If(InterfaceDeclarationHeritageList_0(input), ([_0, input]) => If(If(If(Type(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [InterfaceDeclarationHeritageListMapping(_0), input]), InterfaceDeclarationHeritage = (input) => If(If(If(Const("extends", input), ([_0, input]) => If(InterfaceDeclarationHeritageList(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [InterfaceDeclarationHeritageMapping(_0), input]), InterfaceDeclarationGeneric = (input) => If(If(Const("interface", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(GenericParameters(input), ([_2, input]) => If(InterfaceDeclarationHeritage(input), ([_3, input]) => If(Properties(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [InterfaceDeclarationGenericMapping(_0), input]), InterfaceDeclaration = (input) => If(If(Const("interface", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(InterfaceDeclarationHeritage(input), ([_2, input]) => If(Properties(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [InterfaceDeclarationMapping(_0), input]), TypeAliasDeclarationGeneric = (input) => If(If(Const("type", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(GenericParameters(input), ([_2, input]) => If(Const("=", input), ([_3, input]) => If(Type(input), ([_4, input]) => [[_0, _1, _2, _3, _4], input]))))), ([_0, input]) => [TypeAliasDeclarationGenericMapping(_0), input]), TypeAliasDeclaration = (input) => If(If(Const("type", input), ([_0, input]) => If(Ident(input), ([_1, input]) => If(Const("=", input), ([_2, input]) => If(Type(input), ([_3, input]) => [[_0, _1, _2, _3], input])))), ([_0, input]) => [TypeAliasDeclarationMapping(_0), input]), ExportKeyword = (input) => If(If(If(Const("export", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_0, input]) => [ExportKeywordMapping(_0), input]), ModuleDeclarationDelimiter = (input) => If(If(If(Const(";", input), ([_0, input]) => If(Const(`
+`, input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [_0, input], () => If(If(Const(";", input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If(If(Const(`
+`, input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => []))), ([_0, input]) => [ModuleDeclarationDelimiterMapping(_0), input]), ModuleDeclarationList_0 = (input, result = []) => If(If(ModuleDeclaration(input), ([_0, input]) => If(ModuleDeclarationDelimiter(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => ModuleDeclarationList_0(input, [...result, _0]), () => [result, input]), ModuleDeclarationList = (input) => If(If(ModuleDeclarationList_0(input), ([_0, input]) => If(If(If(ModuleDeclaration(input), ([_0, input]) => [[_0], input]), ([_0, input]) => [_0, input], () => If([[], input], ([_0, input]) => [_0, input], () => [])), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ModuleDeclarationListMapping(_0), input]), ModuleDeclaration = (input) => If(If(ExportKeyword(input), ([_0, input]) => If(If(InterfaceDeclarationGeneric(input), ([_0, input]) => [_0, input], () => If(InterfaceDeclaration(input), ([_0, input]) => [_0, input], () => If(TypeAliasDeclarationGeneric(input), ([_0, input]) => [_0, input], () => If(TypeAliasDeclaration(input), ([_0, input]) => [_0, input], () => [])))), ([_1, input]) => If(OptionalSemiColon(input), ([_2, input]) => [[_0, _1, _2], input]))), ([_0, input]) => [ModuleDeclarationMapping(_0), input]), Module = (input) => If(If(ModuleDeclaration(input), ([_0, input]) => If(ModuleDeclarationList(input), ([_1, input]) => [[_0, _1], input])), ([_0, input]) => [ModuleMapping(_0), input]), Script = (input) => If(If(Module(input), ([_0, input]) => [_0, input], () => If(GenericType(input), ([_0, input]) => [_0, input], () => If(Type(input), ([_0, input]) => [_0, input], () => []))), ([_0, input]) => [ScriptMapping(_0), input]);
 var init_parser = __esm(() => {
   init_mapping();
   init_token();
@@ -2846,7 +2514,7 @@ var init_parser = __esm(() => {
 // node_modules/typebox/build/type/engine/patterns/template.mjs
 function ParseTemplateIntoTypes(template) {
   const parsed = TemplateLiteralTypes(`\`${template}\``);
-  const result = exports_guard.IsEqual(parsed.length, 2) ? parsed[0] : Unreachable();
+  const result = IsEqual(parsed.length, 2) ? parsed[0] : Unreachable();
   return result;
 }
 var init_template = __esm(() => {
@@ -2893,13 +2561,13 @@ function EncodeEnum(values, right, pattern) {
   return EncodeType(evaluated, right, pattern);
 }
 function EncodeUnion(types, right, pattern, result = []) {
-  return exports_guard.ShiftLeft(types, (head, tail) => EncodeUnion(tail, right, pattern, [...result, EncodeType(head, [], "")]), () => EncodeTypes(right, `${pattern}(${JoinString(result)})`));
+  return ShiftLeft(types, (head, tail) => EncodeUnion(tail, right, pattern, [...result, EncodeType(head, [], "")]), () => EncodeTypes(right, `${pattern}(${JoinString(result)})`));
 }
 function EncodeType(type, right, pattern) {
-  return IsEnum(type) ? EncodeEnum(type.enum, right, pattern) : IsInteger2(type) ? EncodeInteger(right, pattern) : IsLiteral(type) ? EncodeLiteral(type.const, right, pattern) : IsBigInt2(type) ? EncodeBigInt(right, pattern) : IsBoolean3(type) ? EncodeBoolean(right, pattern) : IsNumber3(type) ? EncodeNumber(right, pattern) : IsString3(type) ? EncodeString(right, pattern) : IsTemplateLiteral(type) ? EncodeTemplateLiteral(type.pattern, right, pattern) : IsTemplateLiteralDeferred(type) ? EncodeTemplateLiteralDeferred(type.parameters[0], right, pattern) : IsUnion(type) ? EncodeUnion(type.anyOf, right, pattern) : NeverPattern;
+  return IsEnum(type) ? EncodeEnum(type.enum, right, pattern) : IsInteger2(type) ? EncodeInteger(right, pattern) : IsLiteral(type) ? EncodeLiteral(type.const, right, pattern) : IsBigInt2(type) ? EncodeBigInt(right, pattern) : IsBoolean2(type) ? EncodeBoolean(right, pattern) : IsNumber2(type) ? EncodeNumber(right, pattern) : IsString2(type) ? EncodeString(right, pattern) : IsTemplateLiteral(type) ? EncodeTemplateLiteral(type.pattern, right, pattern) : IsTemplateLiteralDeferred(type) ? EncodeTemplateLiteralDeferred(type.parameters[0], right, pattern) : IsUnion(type) ? EncodeUnion(type.anyOf, right, pattern) : NeverPattern;
 }
 function EncodeTypes(types, pattern) {
-  return exports_guard.ShiftLeft(types, (left, right) => EncodeType(left, right, pattern), () => pattern);
+  return ShiftLeft(types, (left, right) => EncodeType(left, right, pattern), () => pattern);
 }
 function EncodePattern(types) {
   const encoded = EncodeTypes(types, "");
@@ -2930,7 +2598,7 @@ var init_encode = __esm(() => {
 
 // node_modules/typebox/build/type/engine/template_literal/instantiate.mjs
 function TemplateLiteralAction(types, options) {
-  const result = CanInstantiate(types) ? exports_memory.Update(TemplateLiteralEncode(types), {}, options) : TemplateLiteralDeferred(types, options);
+  const result = CanInstantiate(types) ? Update(TemplateLiteralEncode(types), {}, options) : TemplateLiteralDeferred(types, options);
   return result;
 }
 function TemplateLiteralInstantiate(context, state, types, options) {
@@ -2949,7 +2617,7 @@ function TemplateLiteralDeferred(types, options = {}) {
   return Deferred("TemplateLiteral", [types], options);
 }
 function IsTemplateLiteralDeferred(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "action") && exports_guard.IsEqual(value.action, "TemplateLiteral");
+  return IsSchema(value) && HasPropertyKey(value, "action") && IsEqual(value.action, "TemplateLiteral");
 }
 function TemplateLiteralFromTypes(types) {
   return TemplateLiteralAction(types, {});
@@ -2959,8 +2627,8 @@ function TemplateLiteralFromString(template) {
   return TemplateLiteralFromTypes(types);
 }
 function TemplateLiteral2(input, options = {}) {
-  const type = exports_guard.IsString(input) ? TemplateLiteralFromString(input) : TemplateLiteralFromTypes(input);
-  return exports_memory.Update(type, {}, options);
+  const type = IsString(input) ? TemplateLiteralFromString(input) : TemplateLiteralFromTypes(input);
+  return Update(type, {}, options);
 }
 function IsTemplateLiteral(value) {
   return IsKind(value, "TemplateLiteral");
@@ -2987,22 +2655,22 @@ __export(exports_result, {
   Match: () => Match3
 });
 function ExtendsUnion(inferred) {
-  return exports_memory.Create({ ["~kind"]: "ExtendsUnion" }, { inferred });
+  return Create({ ["~kind"]: "ExtendsUnion" }, { inferred });
 }
 function IsExtendsUnion(value) {
-  return exports_guard.IsObject(value) && exports_guard.HasPropertyKey(value, "~kind") && exports_guard.HasPropertyKey(value, "inferred") && exports_guard.IsEqual(value["~kind"], "ExtendsUnion") && exports_guard.IsObject(value.inferred);
+  return IsObject(value) && HasPropertyKey(value, "~kind") && HasPropertyKey(value, "inferred") && IsEqual(value["~kind"], "ExtendsUnion") && IsObject(value.inferred);
 }
 function ExtendsTrue(inferred) {
-  return exports_memory.Create({ ["~kind"]: "ExtendsTrue" }, { inferred });
+  return Create({ ["~kind"]: "ExtendsTrue" }, { inferred });
 }
 function IsExtendsTrue(value) {
-  return exports_guard.IsObject(value) && exports_guard.HasPropertyKey(value, "~kind") && exports_guard.HasPropertyKey(value, "inferred") && exports_guard.IsEqual(value["~kind"], "ExtendsTrue") && exports_guard.IsObject(value.inferred);
+  return IsObject(value) && HasPropertyKey(value, "~kind") && HasPropertyKey(value, "inferred") && IsEqual(value["~kind"], "ExtendsTrue") && IsObject(value.inferred);
 }
 function ExtendsFalse() {
-  return exports_memory.Create({ ["~kind"]: "ExtendsFalse" }, {});
+  return Create({ ["~kind"]: "ExtendsFalse" }, {});
 }
 function IsExtendsFalse(value) {
-  return exports_guard.IsObject(value) && exports_guard.HasPropertyKey(value, "~kind") && exports_guard.IsEqual(value["~kind"], "ExtendsFalse");
+  return IsObject(value) && HasPropertyKey(value, "~kind") && IsEqual(value["~kind"], "ExtendsFalse");
 }
 function IsExtendsTrueLike(value) {
   return IsExtendsUnion(value) || IsExtendsTrue(value);
@@ -3017,27 +2685,27 @@ var init_result = __esm(() => {
 
 // node_modules/typebox/build/type/extends/extends_right.mjs
 function ExtendsRightInfer(inferred, name, left, right) {
-  return Match3(ExtendsLeft(inferred, left, right), (checkInferred) => ExtendsTrue(exports_memory.Assign(exports_memory.Assign(inferred, checkInferred), { [name]: left })), () => ExtendsFalse());
+  return Match3(ExtendsLeft(inferred, left, right), (checkInferred) => ExtendsTrue(Assign(Assign(inferred, checkInferred), { [name]: left })), () => ExtendsFalse());
 }
 function ExtendsRightAny(inferred, _left) {
   return ExtendsTrue(inferred);
 }
 function ExtendsRightDependent(inferred, left, if_, then_, else_) {
-  return Match3(ExtendsLeft(inferred, left, if_), (inferred2) => Match3(ExtendsLeft(inferred2, left, then_), (inferred3) => ExtendsTrue(inferred3), () => ExtendsFalse()), () => Match3(ExtendsLeft(inferred, left, else_), (inferred2) => ExtendsTrue(inferred2), () => ExtendsFalse()));
+  return Match3(ExtendsLeft(inferred, left, if_), (inferred) => Match3(ExtendsLeft(inferred, left, then_), (inferred) => ExtendsTrue(inferred), () => ExtendsFalse()), () => Match3(ExtendsLeft(inferred, left, else_), (inferred) => ExtendsTrue(inferred), () => ExtendsFalse()));
 }
 function ExtendsRightEnum(inferred, left, right) {
   const evaluated = EvaluateEnum(right);
   return ExtendsLeft(inferred, left, evaluated);
 }
 function ExtendsRightIntersect(inferred, left, right) {
-  return exports_guard.ShiftLeft(right, (head, tail) => Match3(ExtendsLeft(inferred, left, head), (inferred2) => ExtendsRightIntersect(inferred2, left, tail), () => ExtendsFalse()), () => ExtendsTrue(inferred));
+  return ShiftLeft(right, (head, tail) => Match3(ExtendsLeft(inferred, left, head), (inferred) => ExtendsRightIntersect(inferred, left, tail), () => ExtendsFalse()), () => ExtendsTrue(inferred));
 }
 function ExtendsRightTemplateLiteral(inferred, left, right) {
   const evaluated = EvaluateTemplateLiteral(right);
   return ExtendsLeft(inferred, left, evaluated);
 }
 function ExtendsRightUnion(inferred, left, right) {
-  return exports_guard.ShiftLeft(right, (head, tail) => Match3(ExtendsLeft(inferred, left, head), (inferred2) => ExtendsTrue(inferred2), () => ExtendsRightUnion(inferred, left, tail)), () => ExtendsFalse());
+  return ShiftLeft(right, (head, tail) => Match3(ExtendsLeft(inferred, left, head), (inferred) => ExtendsTrue(inferred), () => ExtendsRightUnion(inferred, left, tail)), () => ExtendsFalse());
 }
 function ExtendsRight(inferred, left, right) {
   return IsAny(right) ? ExtendsRightAny(inferred, left) : IsDependent(right) ? ExtendsRightDependent(inferred, left, right.if, right.then, right.else) : IsEnum(right) ? ExtendsRightEnum(inferred, left, right.enum) : IsInfer(right) ? ExtendsRightInfer(inferred, right.name, left, right.extends) : IsIntersect(right) ? ExtendsRightIntersect(inferred, left, right.allOf) : IsTemplateLiteral(right) ? ExtendsRightTemplateLiteral(inferred, left, right.pattern) : IsUnion(right) ? ExtendsRightUnion(inferred, left, right.anyOf) : IsUnknown(right) ? ExtendsTrue(inferred) : ExtendsFalse();
@@ -3100,7 +2768,7 @@ var init_bigint3 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/boolean.mjs
 function ExtendsBoolean(inferred, left, right) {
-  return IsBoolean3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsBoolean2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_boolean2 = __esm(() => {
   init_boolean();
@@ -3114,13 +2782,13 @@ function ParameterCompare(inferred, left, leftRest, right, rightRest) {
   const checkRight = IsInfer(right) ? right : left;
   const isLeftOptional = IsOptional(left);
   const isRightOptional = IsOptional(right);
-  return !isLeftOptional && isRightOptional ? ExtendsFalse() : Match3(ExtendsLeft(inferred, checkLeft, checkRight), (inferred2) => ExtendsParameters(inferred2, leftRest, rightRest), () => ExtendsFalse());
+  return !isLeftOptional && isRightOptional ? ExtendsFalse() : Match3(ExtendsLeft(inferred, checkLeft, checkRight), (inferred) => ExtendsParameters(inferred, leftRest, rightRest), () => ExtendsFalse());
 }
 function ParameterRight(inferred, left, leftRest, rightRest) {
-  return exports_guard.ShiftLeft(rightRest, (head, tail) => ParameterCompare(inferred, left, leftRest, head, tail), () => IsOptional(left) ? ExtendsTrue(inferred) : ExtendsFalse());
+  return ShiftLeft(rightRest, (head, tail) => ParameterCompare(inferred, left, leftRest, head, tail), () => IsOptional(left) ? ExtendsTrue(inferred) : ExtendsFalse());
 }
 function ParametersLeft(inferred, left, rightRest) {
-  return exports_guard.ShiftLeft(left, (head, tail) => ParameterRight(inferred, head, tail, rightRest), () => ExtendsTrue(inferred));
+  return ShiftLeft(left, (head, tail) => ParameterRight(inferred, head, tail, rightRest), () => ExtendsTrue(inferred));
 }
 function ExtendsParameters(inferred, left, right) {
   return ParametersLeft(inferred, left, right);
@@ -3145,7 +2813,7 @@ var init_return_type = __esm(() => {
 
 // node_modules/typebox/build/type/extends/constructor.mjs
 function ExtendsConstructor(inferred, parameters, returnType, right) {
-  return IsAny(right) ? ExtendsTrue(inferred) : IsUnknown(right) ? ExtendsTrue(inferred) : IsConstructor2(right) ? Match3(ExtendsParameters(inferred, parameters, right["parameters"]), (inferred2) => ExtendsReturnType(inferred2, returnType, right["instanceType"]), () => ExtendsFalse()) : ExtendsFalse();
+  return IsAny(right) ? ExtendsTrue(inferred) : IsUnknown(right) ? ExtendsTrue(inferred) : IsConstructor(right) ? Match3(ExtendsParameters(inferred, parameters, right["parameters"]), (inferred) => ExtendsReturnType(inferred, returnType, right["instanceType"]), () => ExtendsFalse()) : ExtendsFalse();
 }
 var init_constructor2 = __esm(() => {
   init_any();
@@ -3177,7 +2845,7 @@ var init_enum2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/function.mjs
 function ExtendsFunction(inferred, parameters, returnType, right) {
-  return IsAny(right) ? ExtendsTrue(inferred) : IsUnknown(right) ? ExtendsTrue(inferred) : IsFunction2(right) ? Match3(ExtendsParameters(inferred, parameters, right["parameters"]), (inferred2) => ExtendsReturnType(inferred2, returnType, right["returnType"]), () => ExtendsFalse()) : ExtendsFalse();
+  return IsAny(right) ? ExtendsTrue(inferred) : IsUnknown(right) ? ExtendsTrue(inferred) : IsFunction2(right) ? Match3(ExtendsParameters(inferred, parameters, right["parameters"]), (inferred) => ExtendsReturnType(inferred, returnType, right["returnType"]), () => ExtendsFalse()) : ExtendsFalse();
 }
 var init_function2 = __esm(() => {
   init_any();
@@ -3190,7 +2858,7 @@ var init_function2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/integer.mjs
 function ExtendsInteger(inferred, left, right) {
-  return IsInteger2(right) ? ExtendsTrue(inferred) : IsNumber3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsInteger2(right) ? ExtendsTrue(inferred) : IsNumber2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_integer3 = __esm(() => {
   init_integer();
@@ -3217,16 +2885,16 @@ function ExtendsLiteralBigInt(inferred, left, right) {
   return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsBigInt2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
 }
 function ExtendsLiteralBoolean(inferred, left, right) {
-  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsBoolean3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
+  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsBoolean2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
 }
 function ExtendsLiteralNumber(inferred, left, right) {
-  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsNumber3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
+  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsNumber2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
 }
 function ExtendsLiteralString(inferred, left, right) {
-  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsString3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
+  return IsLiteral(right) ? ExtendsLiteralValue(inferred, left, right.const) : IsString2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, Literal(left), right);
 }
 function ExtendsLiteral(inferred, left, right) {
-  return exports_guard.IsBigInt(left.const) ? ExtendsLiteralBigInt(inferred, left.const, right) : exports_guard.IsBoolean(left.const) ? ExtendsLiteralBoolean(inferred, left.const, right) : exports_guard.IsNumber(left.const) ? ExtendsLiteralNumber(inferred, left.const, right) : exports_guard.IsString(left.const) ? ExtendsLiteralString(inferred, left.const, right) : Unreachable();
+  return IsBigInt(left.const) ? ExtendsLiteralBigInt(inferred, left.const, right) : IsBoolean(left.const) ? ExtendsLiteralBoolean(inferred, left.const, right) : IsNumber(left.const) ? ExtendsLiteralNumber(inferred, left.const, right) : IsString(left.const) ? ExtendsLiteralString(inferred, left.const, right) : Unreachable();
 }
 var init_literal2 = __esm(() => {
   init_guard2();
@@ -3261,7 +2929,7 @@ var init_null2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/number.mjs
 function ExtendsNumber(inferred, left, right) {
-  return IsNumber3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsNumber2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_number3 = __esm(() => {
   init_number();
@@ -3274,43 +2942,43 @@ function ExtendsPropertyOptional(inferred, left, right) {
   return IsOptional(left) ? IsOptional(right) ? ExtendsTrue(inferred) : ExtendsFalse() : ExtendsTrue(inferred);
 }
 function ExtendsProperty(inferred, left, right) {
-  return IsInfer(right) && IsNever(right.extends) ? ExtendsFalse() : Match3(ExtendsLeft(inferred, left, right), (inferred2) => ExtendsPropertyOptional(inferred2, left, right), () => ExtendsFalse());
+  return IsInfer(right) && IsNever(right.extends) ? ExtendsFalse() : Match3(ExtendsLeft(inferred, left, right), (inferred) => ExtendsPropertyOptional(inferred, left, right), () => ExtendsFalse());
 }
-function ExtractInferredProperties(keys, properties2) {
+function ExtractInferredProperties(keys, properties) {
   return keys.reduce((result, key) => {
-    return key in properties2 ? IsExtendsTrueLike(properties2[key]) ? { ...result, ...properties2[key].inferred } : Unreachable() : Unreachable();
+    return key in properties ? IsExtendsTrueLike(properties[key]) ? { ...result, ...properties[key].inferred } : Unreachable() : Unreachable();
   }, {});
 }
 function ExtendsPropertiesComparer(inferred, left, right) {
-  const properties2 = {};
-  for (const rightKey of exports_guard.Keys(right)) {
-    properties2[rightKey] = rightKey in left ? ExtendsProperty({}, left[rightKey], right[rightKey]) : IsOptional(right[rightKey]) ? IsInfer(right[rightKey]) ? ExtendsTrue(exports_memory.Assign(inferred, { [right[rightKey].name]: right[rightKey].extends })) : ExtendsTrue(inferred) : ExtendsFalse();
+  const properties = {};
+  for (const rightKey of Keys(right)) {
+    properties[rightKey] = rightKey in left ? ExtendsProperty({}, left[rightKey], right[rightKey]) : IsOptional(right[rightKey]) ? IsInfer(right[rightKey]) ? ExtendsTrue(Assign(inferred, { [right[rightKey].name]: right[rightKey].extends })) : ExtendsTrue(inferred) : ExtendsFalse();
   }
-  const checked = exports_guard.Values(properties2).every((result) => IsExtendsTrueLike(result));
-  const extracted = checked ? ExtractInferredProperties(exports_guard.Keys(properties2), properties2) : {};
+  const checked = Values(properties).every((result) => IsExtendsTrueLike(result));
+  const extracted = checked ? ExtractInferredProperties(Keys(properties), properties) : {};
   return checked ? ExtendsTrue(extracted) : ExtendsFalse();
 }
 function ExtendsProperties(inferred, left, right) {
   const compared = ExtendsPropertiesComparer(inferred, left, right);
-  return IsExtendsTrueLike(compared) ? ExtendsTrue(exports_memory.Assign(inferred, compared.inferred)) : ExtendsFalse();
+  return IsExtendsTrueLike(compared) ? ExtendsTrue(Assign(inferred, compared.inferred)) : ExtendsFalse();
 }
 function ExtendsObjectToObject(inferred, left, right) {
   return ExtendsProperties(inferred, left, right);
 }
 function RecordMergeInferred(left, right) {
-  return exports_guard.Keys(right).reduce((result, key) => {
+  return Keys(right).reduce((result, key) => {
     return {
       ...result,
-      [key]: exports_guard.HasPropertyKey(left, key) ? IsUnion(result[key]) ? Union([...result[key].anyOf, right[key]]) : Union([left[key], right[key]]) : right[key]
+      [key]: HasPropertyKey(left, key) ? IsUnion(result[key]) ? Union([...result[key].anyOf, right[key]]) : Union([left[key], right[key]]) : right[key]
     };
   }, left);
 }
-function ExtendsRecordComparer(properties2, keys, type, result) {
-  return exports_guard.ShiftLeft(keys, (left, right) => Match3(ExtendsLeft({}, properties2[left], type), (inferred) => ExtendsRecordComparer(properties2, right, type, RecordMergeInferred(result, inferred)), () => ExtendsFalse()), () => ExtendsTrue(result));
+function ExtendsRecordComparer(properties, keys, type, result) {
+  return ShiftLeft(keys, (left, right) => Match3(ExtendsLeft({}, properties[left], type), (inferred) => ExtendsRecordComparer(properties, right, type, RecordMergeInferred(result, inferred)), () => ExtendsFalse()), () => ExtendsTrue(result));
 }
-function ExtendsObjectToRecord(inferred, properties2, _pattern, value) {
-  const keys = exports_guard.Keys(properties2);
-  const result = ExtendsRecordComparer(properties2, keys, value, inferred);
+function ExtendsObjectToRecord(inferred, properties, _pattern, value) {
+  const keys = Keys(properties);
+  const result = ExtendsRecordComparer(properties, keys, value, inferred);
   return result;
 }
 function ExtendsObject(inferred, left, right) {
@@ -3332,8 +3000,8 @@ var init_object2 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/extends/record.mjs
-function FromObject2(inferred, properties2) {
-  return exports_guard.IsEqual(exports_guard.Keys(properties2).length, 0) ? ExtendsTrue(inferred) : ExtendsFalse();
+function FromObject2(inferred, properties) {
+  return IsEqual(Keys(properties).length, 0) ? ExtendsTrue(inferred) : ExtendsFalse();
 }
 function FromRecord(inferred, _leftKey, leftValue, _rightKey, rightValue) {
   return ExtendsLeft(inferred, leftValue, rightValue);
@@ -3353,7 +3021,7 @@ var init_record2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/string.mjs
 function ExtendsString(inferred, left, right) {
-  return IsString3(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsString2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_string3 = __esm(() => {
   init_string();
@@ -3363,7 +3031,7 @@ var init_string3 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/symbol.mjs
 function ExtendsSymbol(inferred, left, right) {
-  return IsSymbol2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsSymbol(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_symbol2 = __esm(() => {
   init_symbol();
@@ -3383,10 +3051,10 @@ var init_template_literal2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/inference.mjs
 function Inferrable(name, type) {
-  return exports_memory.Create({ "~kind": "Inferrable" }, { name, type }, {});
+  return Create({ "~kind": "Inferrable" }, { name, type }, {});
 }
 function IsInferable(value) {
-  return exports_guard.IsObject(value) && exports_guard.HasPropertyKey(value, "~kind") && exports_guard.HasPropertyKey(value, "name") && exports_guard.HasPropertyKey(value, "type") && exports_guard.IsEqual(value["~kind"], "Inferrable") && exports_guard.IsString(value.name) && exports_guard.IsObject(value.type);
+  return IsObject(value) && HasPropertyKey(value, "~kind") && HasPropertyKey(value, "name") && HasPropertyKey(value, "type") && IsEqual(value["~kind"], "Inferrable") && IsString(value.name) && IsObject(value.type);
 }
 function TryRestInferable(type) {
   return IsRest(type) ? IsInfer(type.items) ? IsArray2(type.items.extends) ? Inferrable(type.items.name, type.items.extends.items) : IsUnknown(type.items.extends) ? Inferrable(type.items.name, type.items.extends) : undefined : Unreachable() : undefined;
@@ -3394,18 +3062,18 @@ function TryRestInferable(type) {
 function TryInferable(type) {
   return IsInfer(type) ? Inferrable(type.name, type.extends) : undefined;
 }
-function TryInferResults(rest3, right, result = []) {
-  return exports_guard.ShiftLeft(rest3, (head, tail) => Match3(ExtendsLeft({}, head, right), () => TryInferResults(tail, right, [...result, head]), () => {
+function TryInferResults(rest, right, result = []) {
+  return ShiftLeft(rest, (head, tail) => Match3(ExtendsLeft({}, head, right), () => TryInferResults(tail, right, [...result, head]), () => {
     return;
   }), () => result);
 }
 function InferTupleResult(inferred, name, left, right) {
   const results = TryInferResults(left, right);
-  return exports_guard.IsArray(results) ? ExtendsTrue(exports_memory.Assign(inferred, { [name]: Tuple(results) })) : ExtendsFalse();
+  return IsArray(results) ? ExtendsTrue(Assign(inferred, { [name]: Tuple(results) })) : ExtendsFalse();
 }
 function InferUnionResult(inferred, name, left, right) {
   const results = TryInferResults(left, right);
-  return exports_guard.IsArray(results) ? ExtendsTrue(exports_memory.Assign(inferred, { [name]: Union(results) })) : ExtendsFalse();
+  return IsArray(results) ? ExtendsTrue(Assign(inferred, { [name]: Union(results) })) : ExtendsFalse();
 }
 var init_inference = __esm(() => {
   init_unreachable();
@@ -3438,10 +3106,10 @@ function ElementsCompare(inferred, reversed, left, leftRest, right, rightRest) {
 }
 function ElementsLeft(inferred, reversed, leftRest, right, rightRest) {
   const inferable = TryRestInferable(right);
-  return IsInferable(inferable) ? InferTupleResult(inferred, inferable["name"], ApplyReverse(leftRest, reversed), inferable["type"]) : exports_guard.ShiftLeft(leftRest, (head, tail) => ElementsCompare(inferred, reversed, head, tail, right, rightRest), () => ExtendsFalse());
+  return IsInferable(inferable) ? InferTupleResult(inferred, inferable["name"], ApplyReverse(leftRest, reversed), inferable["type"]) : ShiftLeft(leftRest, (head, tail) => ElementsCompare(inferred, reversed, head, tail, right, rightRest), () => ExtendsFalse());
 }
 function ElementsRight(inferred, reversed, leftRest, rightRest) {
-  return exports_guard.ShiftLeft(rightRest, (head, tail) => ElementsLeft(inferred, reversed, leftRest, head, tail), () => exports_guard.IsEqual(leftRest.length, 0) ? ExtendsTrue(inferred) : ExtendsFalse());
+  return ShiftLeft(rightRest, (head, tail) => ElementsLeft(inferred, reversed, leftRest, head, tail), () => IsEqual(leftRest.length, 0) ? ExtendsTrue(inferred) : ExtendsFalse());
 }
 function Elements(inferred, reversed, leftRest, rightRest) {
   return ElementsRight(inferred, reversed, leftRest, rightRest);
@@ -3453,7 +3121,7 @@ function ExtendsTupleToTuple(inferred, left, right) {
 }
 function ExtendsTupleToArray(inferred, left, right) {
   const inferrable = TryInferable(right);
-  return IsInferable(inferrable) ? InferUnionResult(inferred, inferrable["name"], left, inferrable["type"]) : exports_guard.ShiftLeft(left, (head, tail) => Match3(ExtendsLeft(inferred, head, right), (inferred2) => ExtendsTupleToArray(inferred2, tail, right), () => ExtendsFalse()), () => ExtendsTrue(inferred));
+  return IsInferable(inferrable) ? InferUnionResult(inferred, inferrable["name"], left, inferrable["type"]) : ShiftLeft(left, (head, tail) => Match3(ExtendsLeft(inferred, head, right), (inferred) => ExtendsTupleToArray(inferred, tail, right), () => ExtendsFalse()), () => ExtendsTrue(inferred));
 }
 function ExtendsTuple(inferred, left, right) {
   const instantiatedLeft = InstantiateElements(inferred, State([], []), left);
@@ -3474,7 +3142,7 @@ var init_tuple2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/undefined.mjs
 function ExtendsUndefined(inferred, left, right) {
-  return IsVoid(right) ? ExtendsTrue(inferred) : IsUndefined2(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
+  return IsVoid(right) ? ExtendsTrue(inferred) : IsUndefined(right) ? ExtendsTrue(inferred) : ExtendsRight(inferred, left, right);
 }
 var init_undefined2 = __esm(() => {
   init_undefined();
@@ -3485,10 +3153,10 @@ var init_undefined2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/union.mjs
 function ExtendsUnionSome(inferred, type, unionTypes) {
-  return exports_guard.ShiftLeft(unionTypes, (head, tail) => Match3(ExtendsLeft(inferred, type, head), (inferred2) => ExtendsTrue(inferred2), () => ExtendsUnionSome(inferred, type, tail)), () => ExtendsFalse());
+  return ShiftLeft(unionTypes, (head, tail) => Match3(ExtendsLeft(inferred, type, head), (inferred) => ExtendsTrue(inferred), () => ExtendsUnionSome(inferred, type, tail)), () => ExtendsFalse());
 }
 function ExtendsUnionLeft(inferred, left, right) {
-  return exports_guard.ShiftLeft(left, (head, tail) => Match3(ExtendsUnionSome(inferred, head, right), (inferred2) => ExtendsUnionLeft(inferred2, tail, right), () => ExtendsFalse()), () => ExtendsTrue(inferred));
+  return ShiftLeft(left, (head, tail) => Match3(ExtendsUnionSome(inferred, head, right), (inferred) => ExtendsUnionLeft(inferred, tail, right), () => ExtendsFalse()), () => ExtendsTrue(inferred));
 }
 function ExtendsUnion2(inferred, left, right) {
   const inferrable = TryInferable(right);
@@ -3526,7 +3194,7 @@ var init_void2 = __esm(() => {
 
 // node_modules/typebox/build/type/extends/extends_left.mjs
 function ExtendsLeft(inferred, left, right) {
-  return IsAny(left) ? ExtendsAny(inferred, left, right) : IsArray2(left) ? ExtendsArray(inferred, left, left.items, right) : IsBigInt2(left) ? ExtendsBigInt(inferred, left, right) : IsBoolean3(left) ? ExtendsBoolean(inferred, left, right) : IsConstructor2(left) ? ExtendsConstructor(inferred, left.parameters, left.instanceType, right) : IsDependent(left) ? ExtendsDependent(inferred, left.if, left.then, left.else, right) : IsEnum(left) ? ExtendsEnum(inferred, left.enum, right) : IsFunction2(left) ? ExtendsFunction(inferred, left.parameters, left.returnType, right) : IsInteger2(left) ? ExtendsInteger(inferred, left, right) : IsIntersect(left) ? ExtendsIntersect(inferred, left.allOf, right) : IsLiteral(left) ? ExtendsLiteral(inferred, left, right) : IsNever(left) ? ExtendsNever(inferred, left, right) : IsNull2(left) ? ExtendsNull(inferred, left, right) : IsNumber3(left) ? ExtendsNumber(inferred, left, right) : IsObject2(left) ? ExtendsObject(inferred, left.properties, right) : IsRecord(left) ? ExtendsRecord(inferred, RecordPattern(left), RecordValue(left), right) : IsString3(left) ? ExtendsString(inferred, left, right) : IsSymbol2(left) ? ExtendsSymbol(inferred, left, right) : IsTemplateLiteral(left) ? ExtendsTemplateLiteral(inferred, left.pattern, right) : IsTuple(left) ? ExtendsTuple(inferred, left.items, right) : IsUndefined2(left) ? ExtendsUndefined(inferred, left, right) : IsUnion(left) ? ExtendsUnion2(inferred, left.anyOf, right) : IsUnknown(left) ? ExtendsUnknown(inferred, left, right) : IsVoid(left) ? ExtendsVoid(inferred, left, right) : ExtendsFalse();
+  return IsAny(left) ? ExtendsAny(inferred, left, right) : IsArray2(left) ? ExtendsArray(inferred, left, left.items, right) : IsBigInt2(left) ? ExtendsBigInt(inferred, left, right) : IsBoolean2(left) ? ExtendsBoolean(inferred, left, right) : IsConstructor(left) ? ExtendsConstructor(inferred, left.parameters, left.instanceType, right) : IsDependent(left) ? ExtendsDependent(inferred, left.if, left.then, left.else, right) : IsEnum(left) ? ExtendsEnum(inferred, left.enum, right) : IsFunction2(left) ? ExtendsFunction(inferred, left.parameters, left.returnType, right) : IsInteger2(left) ? ExtendsInteger(inferred, left, right) : IsIntersect(left) ? ExtendsIntersect(inferred, left.allOf, right) : IsLiteral(left) ? ExtendsLiteral(inferred, left, right) : IsNever(left) ? ExtendsNever(inferred, left, right) : IsNull2(left) ? ExtendsNull(inferred, left, right) : IsNumber2(left) ? ExtendsNumber(inferred, left, right) : IsObject2(left) ? ExtendsObject(inferred, left.properties, right) : IsRecord(left) ? ExtendsRecord(inferred, RecordPattern(left), RecordValue(left), right) : IsString2(left) ? ExtendsString(inferred, left, right) : IsSymbol(left) ? ExtendsSymbol(inferred, left, right) : IsTemplateLiteral(left) ? ExtendsTemplateLiteral(inferred, left.pattern, right) : IsTuple(left) ? ExtendsTuple(inferred, left.items, right) : IsUndefined(left) ? ExtendsUndefined(inferred, left, right) : IsUnion(left) ? ExtendsUnion2(inferred, left.anyOf, right) : IsUnknown(left) ? ExtendsUnknown(inferred, left, right) : IsVoid(left) ? ExtendsVoid(inferred, left, right) : ExtendsFalse();
 }
 var init_extends_left = __esm(() => {
   init_any2();
@@ -3581,17 +3249,17 @@ var init_extends_left = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/interface/instantiate.mjs
-function InterfaceOperation(heritage, properties2) {
-  const result = EvaluateIntersect([...heritage, _Object_(properties2)]);
+function InterfaceOperation(heritage, properties) {
+  const result = EvaluateIntersect([...heritage, _Object_(properties)]);
   return result;
 }
-function InterfaceAction(heritage, properties2, options) {
-  const result = CanInstantiate(heritage) ? exports_memory.Update(InterfaceOperation(heritage, properties2), {}, options) : InterfaceDeferred(heritage, properties2, options);
+function InterfaceAction(heritage, properties, options) {
+  const result = CanInstantiate(heritage) ? Update(InterfaceOperation(heritage, properties), {}, options) : InterfaceDeferred(heritage, properties, options);
   return result;
 }
-function InterfaceInstantiate(context, state, heritage, properties2, options) {
+function InterfaceInstantiate(context, state, heritage, properties, options) {
   const instantiatedHeritage = InstantiateTypes(context, state, heritage);
-  const instantiatedProperties = InstantiateProperties(context, state, properties2);
+  const instantiatedProperties = InstantiateProperties(context, state, properties);
   return InterfaceAction(instantiatedHeritage, instantiatedProperties, options);
 }
 var init_instantiate3 = __esm(() => {
@@ -3605,14 +3273,14 @@ var init_instantiate3 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/action/interface.mjs
-function InterfaceDeferred(heritage, properties2, options = {}) {
-  return Deferred("Interface", [heritage, properties2], options);
+function InterfaceDeferred(heritage, properties, options = {}) {
+  return Deferred("Interface", [heritage, properties], options);
 }
 function IsInterfaceDeferred(value) {
-  return IsSchema(value) && exports_guard.HasPropertyKey(value, "action") && exports_guard.IsEqual(value.action, "Interface");
+  return IsSchema(value) && HasPropertyKey(value, "action") && IsEqual(value.action, "Interface");
 }
-function Interface(heritage, properties2, options = {}) {
-  return InterfaceAction(heritage, properties2, options);
+function Interface(heritage, properties, options = {}) {
+  return InterfaceAction(heritage, properties, options);
 }
 var init_interface = __esm(() => {
   init_guard2();
@@ -3622,18 +3290,18 @@ var init_interface = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/cyclic/check.mjs
-function FromRef(stack, context, ref2) {
-  return stack.includes(ref2) ? true : FromType3([...stack, ref2], context, context[ref2]);
+function FromRef(stack, context, ref) {
+  return stack.includes(ref) ? true : FromType3([...stack, ref], context, context[ref]);
 }
-function FromProperties(stack, context, properties2) {
-  const types = PropertyValues(properties2);
+function FromProperties(stack, context, properties) {
+  const types = PropertyValues(properties);
   return FromTypes2(stack, context, types);
 }
 function FromTypes2(stack, context, types) {
-  return exports_guard.ShiftLeft(types, (left, right) => FromType3(stack, context, left) ? true : FromTypes2(stack, context, right), () => false);
+  return ShiftLeft(types, (left, right) => FromType3(stack, context, left) ? true : FromTypes2(stack, context, right), () => false);
 }
 function FromType3(stack, context, type) {
-  return IsRef(type) ? FromRef(stack, context, type.$ref) : IsArray2(type) ? FromType3(stack, context, type.items) : IsConstructor2(type) ? FromTypes2(stack, context, [...type.parameters, type.instanceType]) : IsFunction2(type) ? FromTypes2(stack, context, [...type.parameters, type.returnType]) : IsInterfaceDeferred(type) ? FromProperties(stack, context, type.parameters[1]) : IsIntersect(type) ? FromTypes2(stack, context, type.allOf) : IsObject2(type) ? FromProperties(stack, context, type.properties) : IsUnion(type) ? FromTypes2(stack, context, type.anyOf) : IsTuple(type) ? FromTypes2(stack, context, type.items) : IsRecord(type) ? FromType3(stack, context, RecordValue(type)) : false;
+  return IsRef(type) ? FromRef(stack, context, type.$ref) : IsArray2(type) ? FromType3(stack, context, type.items) : IsConstructor(type) ? FromTypes2(stack, context, [...type.parameters, type.instanceType]) : IsFunction2(type) ? FromTypes2(stack, context, [...type.parameters, type.returnType]) : IsInterfaceDeferred(type) ? FromProperties(stack, context, type.parameters[1]) : IsIntersect(type) ? FromTypes2(stack, context, type.allOf) : IsObject2(type) ? FromProperties(stack, context, type.properties) : IsUnion(type) ? FromTypes2(stack, context, type.anyOf) : IsTuple(type) ? FromTypes2(stack, context, type.items) : IsRecord(type) ? FromType3(stack, context, RecordValue(type)) : false;
 }
 function CyclicCheck(stack, context, type) {
   const result = FromType3(stack, context, type);
@@ -3671,20 +3339,20 @@ var init_candidates = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/cyclic/dependencies.mjs
-function FromRef2(context, ref2, result) {
-  return result.includes(ref2) ? result : (ref2 in context) ? FromType4(context, context[ref2], [...result, ref2]) : Unreachable();
+function FromRef2(context, ref, result) {
+  return result.includes(ref) ? result : (ref in context) ? FromType4(context, context[ref], [...result, ref]) : Unreachable();
 }
-function FromProperties2(context, properties2, result) {
-  const types = PropertyValues(properties2);
+function FromProperties2(context, properties, result) {
+  const types = PropertyValues(properties);
   return FromTypes3(context, types, result);
 }
 function FromTypes3(context, types, result) {
-  return types.reduce((result2, left) => {
-    return FromType4(context, left, result2);
+  return types.reduce((result, left) => {
+    return FromType4(context, left, result);
   }, result);
 }
 function FromType4(context, type, result) {
-  return IsRef(type) ? FromRef2(context, type.$ref, result) : IsArray2(type) ? FromType4(context, type.items, result) : IsConstructor2(type) ? FromTypes3(context, [...type.parameters, type.instanceType], result) : IsFunction2(type) ? FromTypes3(context, [...type.parameters, type.returnType], result) : IsInterfaceDeferred(type) ? FromProperties2(context, type.parameters[1], result) : IsIntersect(type) ? FromTypes3(context, type.allOf, result) : IsObject2(type) ? FromProperties2(context, type.properties, result) : IsUnion(type) ? FromTypes3(context, type.anyOf, result) : IsTuple(type) ? FromTypes3(context, type.items, result) : IsRecord(type) ? FromType4(context, RecordValue(type), result) : result;
+  return IsRef(type) ? FromRef2(context, type.$ref, result) : IsArray2(type) ? FromType4(context, type.items, result) : IsConstructor(type) ? FromTypes3(context, [...type.parameters, type.instanceType], result) : IsFunction2(type) ? FromTypes3(context, [...type.parameters, type.returnType], result) : IsInterfaceDeferred(type) ? FromProperties2(context, type.parameters[1], result) : IsIntersect(type) ? FromTypes3(context, type.allOf, result) : IsObject2(type) ? FromProperties2(context, type.properties, result) : IsUnion(type) ? FromTypes3(context, type.anyOf, result) : IsTuple(type) ? FromTypes3(context, type.items, result) : IsRecord(type) ? FromType4(context, RecordValue(type), result) : result;
 }
 function CyclicDependencies(context, key, type) {
   const result = FromType4(context, type, [key]);
@@ -3709,9 +3377,9 @@ var init_dependencies = __esm(() => {
 function FromRef3(_ref) {
   return Any();
 }
-function FromProperties3(properties2) {
-  return exports_guard.Keys(properties2).reduce((result, key) => {
-    return { ...result, [key]: FromType5(properties2[key]) };
+function FromProperties3(properties) {
+  return Keys(properties).reduce((result, key) => {
+    return { ...result, [key]: FromType5(properties[key]) };
   }, {});
 }
 function FromTypes4(types) {
@@ -3720,10 +3388,10 @@ function FromTypes4(types) {
   }, []);
 }
 function FromType5(type) {
-  return IsRef(type) ? FromRef3(type.$ref) : IsArray2(type) ? _Array_(FromType5(type.items), ArrayOptions(type)) : IsConstructor2(type) ? Constructor(FromTypes4(type.parameters), FromType5(type.instanceType)) : IsFunction2(type) ? _Function_(FromTypes4(type.parameters), FromType5(type.returnType)) : IsIntersect(type) ? Intersect(FromTypes4(type.allOf)) : IsObject2(type) ? _Object_(FromProperties3(type.properties)) : IsRecord(type) ? Record(RecordKey(type), FromType5(RecordValue(type))) : IsUnion(type) ? Union(FromTypes4(type.anyOf)) : IsTuple(type) ? Tuple(FromTypes4(type.items)) : type;
+  return IsRef(type) ? FromRef3(type.$ref) : IsArray2(type) ? _Array_(FromType5(type.items), ArrayOptions(type)) : IsConstructor(type) ? Constructor(FromTypes4(type.parameters), FromType5(type.instanceType)) : IsFunction2(type) ? _Function_(FromTypes4(type.parameters), FromType5(type.returnType)) : IsIntersect(type) ? Intersect(FromTypes4(type.allOf)) : IsObject2(type) ? _Object_(FromProperties3(type.properties)) : IsRecord(type) ? Record(RecordKey(type), FromType5(RecordValue(type))) : IsUnion(type) ? Union(FromTypes4(type.anyOf)) : IsTuple(type) ? Tuple(FromTypes4(type.items)) : type;
 }
-function CyclicAnyFromParameters(defs, ref2) {
-  return ref2 in defs ? FromType5(defs[ref2]) : Unknown();
+function CyclicAnyFromParameters(defs, ref) {
+  return ref in defs ? FromType5(defs[ref]) : Unknown();
 }
 function CyclicExtends(type) {
   return CyclicAnyFromParameters(type.$defs, type.$ref);
@@ -3744,24 +3412,24 @@ var init_extends = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/cyclic/instantiate.mjs
-function CyclicInterface(context, heritage, properties2) {
+function CyclicInterface(context, heritage, properties) {
   const instantiatedHeritage = InstantiateTypes(context, State([], []), heritage);
-  const instantiatedProperties = InstantiateProperties({}, State([], []), properties2);
+  const instantiatedProperties = InstantiateProperties({}, State([], []), properties);
   const evaluatedInterface = EvaluateIntersect([...instantiatedHeritage, _Object_(instantiatedProperties)]);
   return evaluatedInterface;
 }
 function CyclicDefinitions(context, dependencies) {
-  const keys = exports_guard.Keys(context).filter((key) => dependencies.includes(key));
+  const keys = Keys(context).filter((key) => dependencies.includes(key));
   return keys.reduce((result, key) => {
     const type = context[key];
     const instantiatedType = IsInterfaceDeferred(type) ? CyclicInterface(context, type.parameters[0], type.parameters[1]) : type;
     return { ...result, [key]: instantiatedType };
   }, {});
 }
-function InstantiateCyclic(context, ref2, type) {
-  const dependencies = CyclicDependencies(context, ref2, type);
+function InstantiateCyclic(context, ref, type) {
+  const dependencies = CyclicDependencies(context, ref, type);
   const definitions = CyclicDefinitions(context, dependencies);
-  const result = Cyclic(definitions, ref2);
+  const result = Cyclic(definitions, ref);
   return result;
 }
 var init_instantiate4 = __esm(() => {
@@ -3777,11 +3445,11 @@ var init_instantiate4 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/cyclic/target.mjs
-function Resolve(defs, ref2) {
-  return ref2 in defs ? IsRef(defs[ref2]) ? Resolve(defs, defs[ref2].$ref) : defs[ref2] : Never();
+function Resolve(defs, ref) {
+  return ref in defs ? IsRef(defs[ref]) ? Resolve(defs, defs[ref].$ref) : defs[ref] : Never();
 }
-function CyclicTarget(defs, ref2) {
-  const result = Resolve(defs, ref2);
+function CyclicTarget(defs, ref) {
+  const result = Resolve(defs, ref);
   return result;
 }
 var init_target = __esm(() => {
@@ -3825,10 +3493,10 @@ var init_extends3 = __esm(() => {
 // node_modules/typebox/build/type/engine/evaluate/compare.mjs
 function Compare(left, right) {
   const extendsCheck = [
-    IsUnknown(left) ? exports_result.ExtendsFalse() : Extends({}, left, right),
-    IsUnknown(left) ? exports_result.ExtendsTrue({}) : Extends({}, right, left)
+    IsUnknown(left) ? ExtendsFalse() : Extends({}, left, right),
+    IsUnknown(left) ? ExtendsTrue({}) : Extends({}, right, left)
   ];
-  return exports_result.IsExtendsTrueLike(extendsCheck[0]) && exports_result.IsExtendsTrueLike(extendsCheck[1]) ? ResultEqual : exports_result.IsExtendsTrueLike(extendsCheck[0]) && exports_result.IsExtendsFalse(extendsCheck[1]) ? ResultLeftInside : exports_result.IsExtendsFalse(extendsCheck[0]) && exports_result.IsExtendsTrueLike(extendsCheck[1]) ? ResultRightInside : ResultDisjoint;
+  return IsExtendsTrueLike(extendsCheck[0]) && IsExtendsTrueLike(extendsCheck[1]) ? ResultEqual : IsExtendsTrueLike(extendsCheck[0]) && IsExtendsFalse(extendsCheck[1]) ? ResultLeftInside : IsExtendsFalse(extendsCheck[0]) && IsExtendsTrueLike(extendsCheck[1]) ? ResultRightInside : ResultDisjoint;
 }
 var ResultEqual = "equal", ResultDisjoint = "disjoint", ResultLeftInside = "left-inside", ResultRightInside = "right-inside";
 var init_compare = __esm(() => {
@@ -3844,10 +3512,10 @@ function BroadFilter(type, types) {
 }
 function IsBroadestType(type, types) {
   const result = types.some((left) => {
-    const result2 = Compare(type, left);
-    return exports_guard.IsEqual(result2, ResultLeftInside) || exports_guard.IsEqual(result2, ResultEqual);
+    const result = Compare(type, left);
+    return IsEqual(result, ResultLeftInside) || IsEqual(result, ResultEqual);
   });
-  return exports_guard.IsEqual(result, false);
+  return IsEqual(result, false);
 }
 function BroadenType(type, types) {
   const evaluated = EvaluateType(type);
@@ -3875,7 +3543,7 @@ var init_broaden = __esm(() => {
 
 // node_modules/typebox/build/type/engine/evaluate/instantiate.mjs
 function EvaluateAction(type, options) {
-  const result = exports_memory.Update(EvaluateType(type), {}, options);
+  const result = Update(EvaluateType(type), {}, options);
   return result;
 }
 function EvaluateInstantiate(context, state, type, options) {
@@ -3902,13 +3570,13 @@ var init_evaluate3 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/call/distribute_arguments.mjs
 function CollectDistributionNames(expression, result = []) {
-  return IsDeferred(expression) && exports_guard.IsEqual(expression.action, "Conditional") ? IsRef(expression.parameters[0]) ? CollectDistributionNames(expression.parameters[2], CollectDistributionNames(expression.parameters[3], [...result, expression.parameters[0]["$ref"]])) : CollectDistributionNames(expression.parameters[2], CollectDistributionNames(expression.parameters[3], result)) : IsDeferred(expression) && exports_guard.IsEqual(expression.action, "Mapped") ? IsDeferred(expression.parameters[1]) && exports_guard.IsEqual(expression.parameters[1].action, "KeyOf") && IsRef(expression.parameters[1].parameters[0]) ? [...result, expression.parameters[1].parameters[0]["$ref"]] : result : result;
+  return IsDeferred(expression) && IsEqual(expression.action, "Conditional") ? IsRef(expression.parameters[0]) ? CollectDistributionNames(expression.parameters[2], CollectDistributionNames(expression.parameters[3], [...result, expression.parameters[0]["$ref"]])) : CollectDistributionNames(expression.parameters[2], CollectDistributionNames(expression.parameters[3], result)) : IsDeferred(expression) && IsEqual(expression.action, "Mapped") ? IsDeferred(expression.parameters[1]) && IsEqual(expression.parameters[1].action, "KeyOf") && IsRef(expression.parameters[1].parameters[0]) ? [...result, expression.parameters[1].parameters[0]["$ref"]] : result : result;
 }
 function BuildDistributionArray(parameters, names) {
   return parameters.reduce((result, left) => [...result, names.includes(left.name)], []);
 }
 function ZipDistributionArray(arguments_, distributionArray, result = []) {
-  return exports_guard.ShiftLeft(arguments_, (argumentLeft, argumentRight) => exports_guard.ShiftLeft(distributionArray, (booleanLeft, booleanRight) => ZipDistributionArray(argumentRight, booleanRight, [...result, [booleanLeft, argumentLeft]]), () => result), () => result);
+  return ShiftLeft(arguments_, (argumentLeft, argumentRight) => ShiftLeft(distributionArray, (booleanLeft, booleanRight) => ZipDistributionArray(argumentRight, booleanRight, [...result, [booleanLeft, argumentLeft]]), () => result), () => result);
 }
 function Expand(type) {
   return IsUnion(type) ? [...type.anyOf] : [type];
@@ -3923,14 +3591,14 @@ function Cross(current, variants) {
 }
 function Distribute2(zipped) {
   return zipped.reduce((result, left) => {
-    return exports_guard.IsEqual(left[0], true) ? Cross(result, Expand(left[1])) : Cross(result, [left[1]]);
+    return IsEqual(left[0], true) ? Cross(result, Expand(left[1])) : Cross(result, [left[1]]);
   }, [[]]);
 }
 function DistributeArguments(parameters, arguments_, expression) {
   const distributionNames = CollectDistributionNames(expression);
   const distributionArray = BuildDistributionArray(parameters, distributionNames);
   const zippedArguments = ZipDistributionArray(arguments_, distributionArray);
-  return IsDeferred(expression) && exports_guard.IsEqual(expression.action, "Conditional") ? Distribute2(zippedArguments) : IsDeferred(expression) && exports_guard.IsEqual(expression.action, "Mapped") ? Distribute2(zippedArguments) : [arguments_];
+  return IsDeferred(expression) && IsEqual(expression.action, "Conditional") ? Distribute2(zippedArguments) : IsDeferred(expression) && IsEqual(expression.action, "Mapped") ? Distribute2(zippedArguments) : [arguments_];
 }
 var init_distribute_arguments = __esm(() => {
   init_guard2();
@@ -3949,14 +3617,14 @@ function FromNotGeneric() {
 function FromGeneric(name, parameters, expression) {
   return [name, Generic(parameters, expression)];
 }
-function FromRef4(context, ref2, arguments_) {
-  return ref2 in context ? FromType6(context, ref2, context[ref2], arguments_) : FromNotResolvable();
+function FromRef4(context, ref, arguments_) {
+  return ref in context ? FromType6(context, ref, context[ref], arguments_) : FromNotResolvable();
 }
-function FromType6(context, name, target2, arguments_) {
-  return IsGeneric(target2) ? FromGeneric(name, target2.parameters, target2.expression) : IsRef(target2) ? FromRef4(context, target2.$ref, arguments_) : FromNotGeneric();
+function FromType6(context, name, target, arguments_) {
+  return IsGeneric(target) ? FromGeneric(name, target.parameters, target.expression) : IsRef(target) ? FromRef4(context, target.$ref, arguments_) : FromNotGeneric();
 }
-function ResolveTarget(context, target2, arguments_) {
-  return FromType6(context, "(anonymous)", target2, arguments_);
+function ResolveTarget(context, target, arguments_) {
+  return FromType6(context, "(anonymous)", target, arguments_);
 }
 var init_resolve_target = __esm(() => {
   init_generic();
@@ -3966,7 +3634,7 @@ var init_resolve_target = __esm(() => {
 
 // node_modules/typebox/build/type/engine/call/resolve_arguments.mjs
 function AssertArgumentExtends(name, type, extends_) {
-  if (IsInfer(type) || IsCall(type) || exports_result.IsExtendsTrueLike(Extends({}, type, extends_)))
+  if (IsInfer(type) || IsCall(type) || IsExtendsTrueLike(Extends({}, type, extends_)))
     return;
   const cause = { parameter: name, expect: extends_, actual: type };
   throw new Error(`Argument for parameter ${name} does not satisfy constraint`, { cause });
@@ -3974,15 +3642,15 @@ function AssertArgumentExtends(name, type, extends_) {
 function BindArgument(context, state, name, extends_, type) {
   const instantiatedArgument = InstantiateType(context, state, type);
   AssertArgumentExtends(name, instantiatedArgument, extends_);
-  return exports_memory.Assign(context, { [name]: instantiatedArgument });
+  return Assign(context, { [name]: instantiatedArgument });
 }
 function BindArguments(context, state, parameterLeft, parameterRight, arguments_) {
   const instantiatedExtends = InstantiateType(context, state, parameterLeft.extends);
   const instantiatedEquals = InstantiateType(context, state, parameterLeft.equals);
-  return exports_guard.ShiftLeft(arguments_, (left, right) => BindParameters(BindArgument(context, state, parameterLeft["name"], instantiatedExtends, left), state, parameterRight, right), () => BindParameters(BindArgument(context, state, parameterLeft["name"], instantiatedExtends, instantiatedEquals), state, parameterRight, []));
+  return ShiftLeft(arguments_, (left, right) => BindParameters(BindArgument(context, state, parameterLeft["name"], instantiatedExtends, left), state, parameterRight, right), () => BindParameters(BindArgument(context, state, parameterLeft["name"], instantiatedExtends, instantiatedEquals), state, parameterRight, []));
 }
 function BindParameters(context, state, parameters, arguments_) {
-  return exports_guard.ShiftLeft(parameters, (left, right) => BindArguments(context, state, left, right, arguments_), () => context);
+  return ShiftLeft(parameters, (left, right) => BindArguments(context, state, left, right, arguments_), () => context);
 }
 function ResolveArgumentsContext(context, state, parameters, arguments_) {
   return BindParameters(context, state, parameters, arguments_);
@@ -3998,33 +3666,33 @@ var init_resolve_arguments = __esm(() => {
 
 // node_modules/typebox/build/type/engine/call/instantiate.mjs
 function Peek(state) {
-  const result = exports_guard.IsGreaterThan(state.callstack.length, 0) ? state.callstack[state.callstack.length - 1] : "";
+  const result = IsGreaterThan(state.callstack.length, 0) ? state.callstack[state.callstack.length - 1] : "";
   return result;
 }
 function IsTailCall(state, name) {
-  const result = exports_guard.IsEqual(Peek(state), name);
+  const result = IsEqual(Peek(state), name);
   return result;
 }
-function CallDispatch(context, state, target2, parameters, expression, arguments_) {
+function CallDispatch(context, state, target, parameters, expression, arguments_) {
   const argumentsContext = ResolveArgumentsContext(context, state, parameters, arguments_);
-  const returnType = InstantiateType(argumentsContext, State([...state["callstack"], target2["$ref"]], state["visited"]), expression);
+  const returnType = InstantiateType(argumentsContext, State([...state["callstack"], target["$ref"]], state["visited"]), expression);
   return InstantiateType(argumentsContext, State([], []), returnType);
 }
-function CallDistributed(context, state, target2, parameters, expression, distributedArguments) {
-  return distributedArguments.reduce((result, arguments_) => [...result, CallDispatch(context, state, target2, parameters, expression, arguments_)], []);
+function CallDistributed(context, state, target, parameters, expression, distributedArguments) {
+  return distributedArguments.reduce((result, arguments_) => [...result, CallDispatch(context, state, target, parameters, expression, arguments_)], []);
 }
-function CallImmediate(context, state, target2, parameters, expression, arguments_) {
+function CallImmediate(context, state, target, parameters, expression, arguments_) {
   const distributedArguments = DistributeArguments(parameters, arguments_, expression);
-  const returnTypes = CallDistributed(context, state, target2, parameters, expression, distributedArguments);
-  const result = exports_guard.IsEqual(returnTypes.length, 1) ? returnTypes[0] : EvaluateUnion(returnTypes);
+  const returnTypes = CallDistributed(context, state, target, parameters, expression, distributedArguments);
+  const result = IsEqual(returnTypes.length, 1) ? returnTypes[0] : EvaluateUnion(returnTypes);
   return result;
 }
-function CallInstantiate(context, state, target2, arguments_) {
+function CallInstantiate(context, state, target, arguments_) {
   const instantiatedArguments = InstantiateTypes(context, state, arguments_);
-  const resolved = ResolveTarget(context, target2, arguments_);
+  const resolved = ResolveTarget(context, target, arguments_);
   const name = resolved[0];
   const type = resolved[1];
-  const result = IsGeneric(type) ? IsTailCall(state, name) ? CallConstruct(Ref(name), instantiatedArguments) : CallImmediate(context, state, Ref(name), type.parameters, type.expression, instantiatedArguments) : CallConstruct(target2, instantiatedArguments);
+  const result = IsGeneric(type) ? IsTailCall(state, name) ? CallConstruct(Ref(name), instantiatedArguments) : CallImmediate(context, state, Ref(name), type.parameters, type.expression, instantiatedArguments) : CallConstruct(target, instantiatedArguments);
   return result;
 }
 var init_instantiate6 = __esm(() => {
@@ -4042,11 +3710,11 @@ var init_instantiate6 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/types/call.mjs
-function CallConstruct(target2, arguments_) {
-  return exports_memory.Create({ ["~kind"]: "Call" }, { type: "call", target: target2, arguments: arguments_ }, {});
+function CallConstruct(target, arguments_) {
+  return Create({ ["~kind"]: "Call" }, { type: "call", target, arguments: arguments_ }, {});
 }
-function Call(target2, arguments_) {
-  return CallInstantiate({}, State([], []), target2, arguments_);
+function Call(target, arguments_) {
+  return CallInstantiate({}, State([], []), target, arguments_);
 }
 function IsCall(value) {
   return IsKind(value, "Call");
@@ -4060,10 +3728,10 @@ var init_call = __esm(() => {
 
 // node_modules/typebox/build/type/engine/immutable/instantiate_remove.mjs
 function RemoveImmutableOperation(type) {
-  return exports_memory.Discard(type, ["~immutable"]);
+  return Discard(type, ["~immutable"]);
 }
 function RemoveImmutableAction(type, options) {
-  const result = exports_memory.Update(RemoveImmutableOperation(type), {}, options);
+  const result = Update(RemoveImmutableOperation(type), {}, options);
   return result;
 }
 function RemoveImmutableInstantiate(context, state, type, options) {
@@ -4082,7 +3750,7 @@ function ApplyMapping(mapping, value) {
 
 // node_modules/typebox/build/type/engine/intrinsics/from_literal.mjs
 function FromLiteral3(mapping, value) {
-  return exports_guard.IsString(value) ? Literal(ApplyMapping(mapping, value)) : Literal(value);
+  return IsString(value) ? Literal(ApplyMapping(mapping, value)) : Literal(value);
 }
 var init_from_literal = __esm(() => {
   init_guard2();
@@ -4173,19 +3841,19 @@ var init_uppercase = __esm(() => {
 
 // node_modules/typebox/build/type/engine/intrinsics/instantiate.mjs
 function CapitalizeAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType7(CapitalizeMapping, type), {}, options) : CapitalizeDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType7(CapitalizeMapping, type), {}, options) : CapitalizeDeferred(type, options);
   return result;
 }
 function LowercaseAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType7(LowercaseMapping, type), {}, options) : LowercaseDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType7(LowercaseMapping, type), {}, options) : LowercaseDeferred(type, options);
   return result;
 }
 function UncapitalizeAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType7(UncapitalizeMapping, type), {}, options) : UncapitalizeDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType7(UncapitalizeMapping, type), {}, options) : UncapitalizeDeferred(type, options);
   return result;
 }
 function UppercaseAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType7(UppercaseMapping, type), {}, options) : UppercaseDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType7(UppercaseMapping, type), {}, options) : UppercaseDeferred(type, options);
   return result;
 }
 function CapitalizeInstantiate(context, state, type, options) {
@@ -4231,10 +3899,10 @@ var init_conditional = __esm(() => {
 // node_modules/typebox/build/type/engine/conditional/instantiate.mjs
 function ConditionalOperation(context, state, left, right, true_, false_) {
   const extendsResult = Extends(context, left, right);
-  return exports_result.IsExtendsUnion(extendsResult) ? Union([InstantiateType(extendsResult.inferred, state, true_), InstantiateType(context, state, false_)]) : exports_result.IsExtendsTrue(extendsResult) ? InstantiateType(extendsResult.inferred, state, true_) : InstantiateType(context, state, false_);
+  return IsExtendsUnion(extendsResult) ? Union([InstantiateType(extendsResult.inferred, state, true_), InstantiateType(context, state, false_)]) : IsExtendsTrue(extendsResult) ? InstantiateType(extendsResult.inferred, state, true_) : InstantiateType(context, state, false_);
 }
 function ConditionalAction(context, state, left, right, true_, false_, options) {
-  const result = CanInstantiate([left, right]) ? exports_memory.Update(ConditionalOperation(context, state, left, right, true_, false_), {}, options) : ConditionalDeferred(left, right, true_, false_, options);
+  const result = CanInstantiate([left, right]) ? Update(ConditionalOperation(context, state, left, right, true_, false_), {}, options) : ConditionalDeferred(left, right, true_, false_, options);
   return result;
 }
 function ConditionalInstantiate(context, state, left, right, true_, false_, options) {
@@ -4269,13 +3937,13 @@ var init_constructor_parameters = __esm(() => {
 
 // node_modules/typebox/build/type/engine/constructor_parameters/instantiate.mjs
 function ConstructorParametersOperation(type) {
-  const parameters = IsConstructor2(type) ? type["parameters"] : [];
+  const parameters = IsConstructor(type) ? type["parameters"] : [];
   const instantiatedParameters = InstantiateElements({}, State([], []), parameters);
   const result = Tuple(instantiatedParameters);
   return result;
 }
 function ConstructorParametersAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(ConstructorParametersOperation(type), {}, options) : ConstructorParametersDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(ConstructorParametersOperation(type), {}, options) : ConstructorParametersDeferred(type, options);
   return result;
 }
 function ConstructorParametersInstantiate(context, state, type, options) {
@@ -4306,7 +3974,7 @@ var init_exclude = __esm(() => {
 
 // node_modules/typebox/build/type/engine/exclude/instantiate.mjs
 function ExcludeAction(left, right, options) {
-  const result = CanInstantiate([left, right]) ? exports_memory.Update(ExcludeOperation(left, right), {}, options) : ExcludeDeferred(left, right, options);
+  const result = CanInstantiate([left, right]) ? Update(ExcludeOperation(left, right), {}, options) : ExcludeDeferred(left, right, options);
   return result;
 }
 function ExcludeInstantiate(context, state, left, right, options) {
@@ -4335,8 +4003,8 @@ var init_extract = __esm(() => {
 
 // node_modules/typebox/build/type/engine/extract/operation.mjs
 function ExtractType(left, right) {
-  const check2 = Extends({}, left, right);
-  const result = exports_result.IsExtendsTrueLike(check2) ? [left] : [];
+  const check = Extends({}, left, right);
+  const result = IsExtendsTrueLike(check) ? [left] : [];
   return result;
 }
 function ExtractUnion(types, right) {
@@ -4360,7 +4028,7 @@ var init_operation2 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/extract/instantiate.mjs
 function ExtractAction(left, right, options) {
-  const result = CanInstantiate([left, right]) ? exports_memory.Update(ExtractOperation(left, right), {}, options) : ExtractDeferred(left, right, options);
+  const result = CanInstantiate([left, right]) ? Update(ExtractOperation(left, right), {}, options) : ExtractDeferred(left, right, options);
   return result;
 }
 function ExtractInstantiate(context, state, left, right, options) {
@@ -4396,7 +4064,7 @@ function IndexDeferred(type, indexer, options = {}) {
   return Deferred("Index", [type, indexer], options);
 }
 function Index(type, indexer_or_keys, options = {}) {
-  const indexer = exports_guard.IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
+  const indexer = IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
   return IndexAction(type, indexer, options);
 }
 var init_indexed = __esm(() => {
@@ -4407,9 +4075,9 @@ var init_indexed = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/object/from_cyclic.mjs
-function FromCyclic(defs, ref2) {
-  const target2 = CyclicTarget(defs, ref2);
-  const result = FromType8(target2);
+function FromCyclic(defs, ref) {
+  const target = CyclicTarget(defs, ref);
+  const result = FromType8(target);
   return result;
 }
 var init_from_cyclic = __esm(() => {
@@ -4430,15 +4098,15 @@ var init_from_dependent = __esm(() => {
 
 // node_modules/typebox/build/type/engine/object/from_intersect.mjs
 function CollapseIntersectProperties(left, right) {
-  const leftKeys = exports_guard.Keys(left).filter((key) => !exports_guard.HasPropertyKey(right, key));
-  const rightKeys = exports_guard.Keys(right).filter((key) => !exports_guard.HasPropertyKey(left, key));
-  const sharedKeys = exports_guard.Keys(left).filter((key) => exports_guard.HasPropertyKey(right, key));
+  const leftKeys = Keys(left).filter((key) => !HasPropertyKey(right, key));
+  const rightKeys = Keys(right).filter((key) => !HasPropertyKey(left, key));
+  const sharedKeys = Keys(left).filter((key) => HasPropertyKey(right, key));
   const leftProperties = leftKeys.reduce((result, key) => ({ ...result, [key]: left[key] }), {});
   const rightProperties = rightKeys.reduce((result, key) => ({ ...result, [key]: right[key] }), {});
   const sharedProperties = sharedKeys.reduce((result, key) => ({ ...result, [key]: EvaluateIntersect([left[key], right[key]]) }), {});
-  const unique = exports_memory.Assign(leftProperties, rightProperties);
-  const shared2 = exports_memory.Assign(unique, sharedProperties);
-  return shared2;
+  const unique = Assign(leftProperties, rightProperties);
+  const shared = Assign(unique, sharedProperties);
+  return shared;
 }
 function FromIntersect(types) {
   return types.reduce((result, left) => {
@@ -4453,14 +4121,14 @@ var init_from_intersect = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/object/from_object.mjs
-function FromObject3(properties2) {
-  return properties2;
+function FromObject3(properties) {
+  return properties;
 }
 
 // node_modules/typebox/build/type/engine/object/from_tuple.mjs
 function FromTuple(types) {
-  const object2 = TupleToObject(Tuple(types));
-  const result = FromType8(object2);
+  const object = TupleToObject(Tuple(types));
+  const result = FromType8(object);
   return result;
 }
 var init_from_tuple = __esm(() => {
@@ -4471,17 +4139,17 @@ var init_from_tuple = __esm(() => {
 
 // node_modules/typebox/build/type/engine/object/from_union.mjs
 function CollapseUnionProperties(left, right) {
-  const sharedKeys = exports_guard.Keys(left).filter((key) => (key in right));
-  const result = sharedKeys.reduce((result2, key) => {
-    return { ...result2, [key]: EvaluateUnion([left[key], right[key]]) };
+  const sharedKeys = Keys(left).filter((key) => (key in right));
+  const result = sharedKeys.reduce((result, key) => {
+    return { ...result, [key]: EvaluateUnion([left[key], right[key]]) };
   }, {});
   return result;
 }
 function ReduceVariants(types, result) {
-  return exports_guard.ShiftLeft(types, (left, right) => ReduceVariants(right, CollapseUnionProperties(result, FromType8(left))), () => result);
+  return ShiftLeft(types, (left, right) => ReduceVariants(right, CollapseUnionProperties(result, FromType8(left))), () => result);
 }
 function FromUnion3(types) {
-  return exports_guard.ShiftLeft(types, (left, right) => ReduceVariants(right, FromType8(left)), () => Unreachable());
+  return ShiftLeft(types, (left, right) => ReduceVariants(right, FromType8(left)), () => Unreachable());
 }
 var init_from_union2 = __esm(() => {
   init_guard2();
@@ -4510,8 +4178,8 @@ var init_from_type2 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/object/collapse.mjs
 function CollapseToObject(type) {
-  const properties2 = FromType8(type);
-  const result = _Object_(properties2);
+  const properties = FromType8(type);
+  const result = _Object_(properties);
   return result;
 }
 var init_collapse = __esm(() => {
@@ -4546,8 +4214,8 @@ function NormalizeIndexer(type) {
 }
 function FromArray2(type, indexer) {
   const normalizedIndexer = NormalizeIndexer(indexer);
-  const check2 = Extends({}, normalizedIndexer, Number2());
-  const result = exports_result.IsExtendsTrueLike(check2) ? type : IsLiteral(indexer) && exports_guard.IsEqual(indexer.const, "length") ? Number2() : Never();
+  const check = Extends({}, normalizedIndexer, Number2());
+  const result = IsExtendsTrueLike(check) ? type : IsLiteral(indexer) && IsEqual(indexer.const, "length") ? Number2() : Never();
   return result;
 }
 var init_from_array = __esm(() => {
@@ -4562,9 +4230,9 @@ var init_from_array = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/indexable/from_cyclic.mjs
-function FromCyclic2(defs, ref2) {
-  const target2 = CyclicTarget(defs, ref2);
-  const result = FromType9(target2);
+function FromCyclic2(defs, ref) {
+  const target = CyclicTarget(defs, ref);
+  const result = FromType9(target);
   return result;
 }
 var init_from_cyclic2 = __esm(() => {
@@ -4662,14 +4330,14 @@ var init_to_indexable_keys = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/this/expand_this.mjs
-function FromTypes5(properties2, types) {
-  return types.map((type) => FromType10(properties2, type));
+function FromTypes5(properties, types) {
+  return types.map((type) => FromType10(properties, type));
 }
-function FromType10(properties2, type) {
-  return IsArray2(type) ? _Array_(FromType10(properties2, type.items)) : IsConstructor2(type) ? Constructor(FromTypes5(properties2, type.parameters), FromType10(properties2, type.instanceType)) : IsFunction2(type) ? _Function_(FromTypes5(properties2, type.parameters), FromType10(properties2, type.returnType)) : IsTuple(type) ? Tuple(FromTypes5(properties2, type.items)) : IsUnion(type) ? Union(FromTypes5(properties2, type.anyOf)) : IsIntersect(type) ? Intersect(FromTypes5(properties2, type.allOf)) : IsThis(type) ? _Object_(properties2) : type;
+function FromType10(properties, type) {
+  return IsArray2(type) ? _Array_(FromType10(properties, type.items)) : IsConstructor(type) ? Constructor(FromTypes5(properties, type.parameters), FromType10(properties, type.instanceType)) : IsFunction2(type) ? _Function_(FromTypes5(properties, type.parameters), FromType10(properties, type.returnType)) : IsTuple(type) ? Tuple(FromTypes5(properties, type.items)) : IsUnion(type) ? Union(FromTypes5(properties, type.anyOf)) : IsIntersect(type) ? Intersect(FromTypes5(properties, type.allOf)) : IsThis(type) ? _Object_(properties) : type;
 }
-function ExpandThis(properties2, type) {
-  const result = FromType10(properties2, type);
+function ExpandThis(properties, type) {
+  const result = FromType10(properties, type);
   return result;
 }
 var init_expand_this = __esm(() => {
@@ -4684,19 +4352,19 @@ var init_expand_this = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/indexed/from_object.mjs
-function IndexProperty(properties2, key) {
-  const selectedType = key in properties2 ? properties2[key] : Never();
-  const result = ExpandThis(properties2, selectedType);
+function IndexProperty(properties, key) {
+  const selectedType = key in properties ? properties[key] : Never();
+  const result = ExpandThis(properties, selectedType);
   return result;
 }
-function IndexProperties(properties2, keys) {
+function IndexProperties(properties, keys) {
   return keys.reduce((result, left) => {
-    return [...result, IndexProperty(properties2, left)];
+    return [...result, IndexProperty(properties, left)];
   }, []);
 }
-function FromIndexer(properties2, indexer) {
+function FromIndexer(properties, indexer) {
   const keys = ToIndexableKeys(indexer);
-  const variants = IndexProperties(properties2, keys);
+  const variants = IndexProperties(properties, keys);
   const result = EvaluateUnion(variants);
   return result;
 }
@@ -4704,15 +4372,15 @@ function NumericKeys(keys) {
   const result = keys.filter((key) => NumericKeyPattern.test(key));
   return result;
 }
-function FromIndexerNumber(properties2) {
-  const keys = PropertyKeys(properties2);
+function FromIndexerNumber(properties) {
+  const keys = PropertyKeys(properties);
   const numericKeys = NumericKeys(keys);
-  const variants = IndexProperties(properties2, numericKeys);
+  const variants = IndexProperties(properties, numericKeys);
   const result = EvaluateUnion(variants);
   return result;
 }
-function FromObject4(properties2, indexer) {
-  const result = IsNumber3(indexer) ? FromIndexerNumber(properties2) : FromIndexer(properties2, indexer);
+function FromObject4(properties, indexer) {
+  const result = IsNumber2(indexer) ? FromIndexerNumber(properties) : FromIndexer(properties, indexer);
   return result;
 }
 var NumericKeyPattern;
@@ -4747,8 +4415,8 @@ var init_array_indexer = __esm(() => {
 // node_modules/typebox/build/type/engine/indexed/from_tuple.mjs
 function IndexElementsWithIndexer(types, indexer) {
   return types.reduceRight((result, right, index) => {
-    const check2 = Extends({}, Literal(index), indexer);
-    return exports_result.IsExtendsTrueLike(check2) ? [right, ...result] : result;
+    const check = Extends({}, Literal(index), indexer);
+    return IsExtendsTrueLike(check) ? [right, ...result] : result;
   }, []);
 }
 function FromTupleWithIndexer(types, indexer) {
@@ -4760,7 +4428,7 @@ function FromTupleWithoutIndexer(types) {
   return EvaluateUnionFast(types);
 }
 function FromTuple2(types, indexer) {
-  return IsLiteral(indexer) && exports_guard.IsEqual(indexer.const, "length") ? Literal(types.length) : IsNumber3(indexer) || IsInteger2(indexer) ? FromTupleWithoutIndexer(types) : FromTupleWithIndexer(types, indexer);
+  return IsLiteral(indexer) && IsEqual(indexer.const, "length") ? Literal(types.length) : IsNumber2(indexer) || IsInteger2(indexer) ? FromTupleWithoutIndexer(types) : FromTupleWithIndexer(types, indexer);
 }
 var init_from_tuple2 = __esm(() => {
   init_guard2();
@@ -4792,7 +4460,7 @@ function NormalizeType(type) {
   return result;
 }
 function IndexAction(type, indexer, options) {
-  const result = CanInstantiate([type, indexer]) ? exports_memory.Update(FromType11(NormalizeType(type), indexer), {}, options) : IndexDeferred(type, indexer, options);
+  const result = CanInstantiate([type, indexer]) ? Update(FromType11(NormalizeType(type), indexer), {}, options) : IndexDeferred(type, indexer, options);
   return result;
 }
 function IndexInstantiate(context, state, type, indexer, options) {
@@ -4826,10 +4494,10 @@ var init_instance_type = __esm(() => {
 
 // node_modules/typebox/build/type/engine/instance_type/instantiate.mjs
 function InstanceTypeOperation(type) {
-  return IsConstructor2(type) ? type["instanceType"] : Never();
+  return IsConstructor(type) ? type["instanceType"] : Never();
 }
 function InstanceTypeAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(InstanceTypeOperation(type), {}, options) : InstanceTypeDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(InstanceTypeOperation(type), {}, options) : InstanceTypeDeferred(type, options);
   return result;
 }
 function InstanceTypeInstantiate(context, state, type, options = {}) {
@@ -4877,13 +4545,13 @@ var init_from_array2 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/keyof/from_object.mjs
 function FromPropertyKeys(keys) {
-  const result = keys.reduce((result2, left) => {
-    return IsLiteralValue(left) ? [...result2, Literal(ConvertToIntegerKey(left))] : Unreachable();
+  const result = keys.reduce((result, left) => {
+    return IsLiteralValue(left) ? [...result, Literal(ConvertToIntegerKey(left))] : Unreachable();
   }, []);
   return result;
 }
-function FromObject5(properties2) {
-  const propertyKeys = exports_guard.Keys(properties2);
+function FromObject5(properties) {
+  const propertyKeys = Keys(properties);
   const variants = FromPropertyKeys(propertyKeys);
   const result = EvaluateUnionFast(variants);
   return result;
@@ -4938,7 +4606,7 @@ function NormalizeType2(type) {
   return result;
 }
 function KeyOfAction(type, options) {
-  return CanInstantiate([type]) ? exports_memory.Update(FromType12(NormalizeType2(type)), {}, options) : KeyOfDeferred(type, options);
+  return CanInstantiate([type]) ? Update(FromType12(NormalizeType2(type)), {}, options) : KeyOfDeferred(type, options);
 }
 function KeyOfInstantiate(context, state, type, options) {
   const instantiatedType = InstantiateType(context, state, type);
@@ -4957,11 +4625,11 @@ var init_instantiate14 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/action/mapped.mjs
-function MappedDeferred(identifier2, type, as, property, options = {}) {
-  return Deferred("Mapped", [identifier2, type, as, property], options);
+function MappedDeferred(identifier, type, as, property, options = {}) {
+  return Deferred("Mapped", [identifier, type, as, property], options);
 }
-function Mapped(identifier2, type, as, property, options = {}) {
-  return MappedAction({}, State([], []), identifier2, type, as, property, options);
+function Mapped(identifier, type, as, property, options = {}) {
+  return MappedAction({}, State([], []), identifier, type, as, property, options);
 }
 var init_mapped = __esm(() => {
   init_deferred();
@@ -4986,7 +4654,7 @@ function FromEnum2(values) {
   return result;
 }
 function FromLiteral5(value) {
-  const result = exports_guard.IsNumber(value) ? [Literal(`${value}`)] : [Literal(value)];
+  const result = IsNumber(value) ? [Literal(`${value}`)] : [Literal(value)];
   return result;
 }
 function FromType13(type) {
@@ -5012,26 +4680,26 @@ function CanonicalAs(instantiatedAs) {
   const result = IsTemplateLiteral(instantiatedAs) ? EvaluateTemplateLiteral(instantiatedAs.pattern) : instantiatedAs;
   return result;
 }
-function MappedVariant(context, state, identifier2, variant, as, property) {
-  const variantContext = exports_memory.Assign(context, { [identifier2["name"]]: variant });
+function MappedVariant(context, state, identifier, variant, as, property) {
+  const variantContext = Assign(context, { [identifier["name"]]: variant });
   const instantiatedAs = InstantiateType(variantContext, state, as);
   const canonicalAs = CanonicalAs(instantiatedAs);
   const instantiatedProperty = InstantiateType(variantContext, state, property);
   return IsLiteralNumber(canonicalAs) || IsLiteralString(canonicalAs) ? { [canonicalAs.const]: instantiatedProperty } : {};
 }
-function MappedProperties(context, state, identifier2, variants, as, property) {
+function MappedProperties(context, state, identifier, variants, as, property) {
   return variants.reduce((result, left) => {
-    return [...result, MappedVariant(context, state, identifier2, left, as, property)];
+    return [...result, MappedVariant(context, state, identifier, left, as, property)];
   }, []);
 }
-function MappedObjects(properties2) {
-  return properties2.reduce((result, left) => {
+function MappedObjects(properties) {
+  return properties.reduce((result, left) => {
     return [...result, _Object_(left)];
   }, []);
 }
-function MappedOperation(context, state, identifier2, type, as, property) {
+function MappedOperation(context, state, identifier, type, as, property) {
   const variants = MappedVariants(type);
-  const mappedProperties = MappedProperties(context, state, identifier2, variants, as, property);
+  const mappedProperties = MappedProperties(context, state, identifier, variants, as, property);
   const mappedObjects = MappedObjects(mappedProperties);
   const result = EvaluateIntersect(mappedObjects);
   return result;
@@ -5048,13 +4716,13 @@ var init_mapped_operation = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/mapped/instantiate.mjs
-function MappedAction(context, state, identifier2, type, as, property, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(MappedOperation(context, state, identifier2, type, as, property), {}, options) : MappedDeferred(identifier2, type, as, property, options);
+function MappedAction(context, state, identifier, type, as, property, options) {
+  const result = CanInstantiate([type]) ? Update(MappedOperation(context, state, identifier, type, as, property), {}, options) : MappedDeferred(identifier, type, as, property, options);
   return result;
 }
-function MappedInstantiate(context, state, identifier2, type, as, property, options) {
+function MappedInstantiate(context, state, identifier, type, as, property, options) {
   const instantiatedType = InstantiateType(context, state, type);
-  return MappedAction(context, state, identifier2, instantiatedType, as, property, options);
+  return MappedAction(context, state, identifier, instantiatedType, as, property, options);
 }
 var init_instantiate15 = __esm(() => {
   init_memory2();
@@ -5065,15 +4733,15 @@ var init_instantiate15 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/module/instantiate.mjs
 function InstantiateCyclics(context, declarations, cyclicKeys) {
-  const declarationContext = exports_memory.Assign(context, declarations);
-  const declarationKeys = exports_guard.Keys(declarations).filter((key) => cyclicKeys.includes(key));
+  const declarationContext = Assign(context, declarations);
+  const declarationKeys = Keys(declarations).filter((key) => cyclicKeys.includes(key));
   return declarationKeys.reduce((result, key) => {
     return { ...result, [key]: InstantiateCyclic(declarationContext, key, declarations[key]) };
   }, {});
 }
 function InstantiateNonCyclics(context, declarations, cyclicKeys) {
-  const declarationContext = exports_memory.Assign(context, declarations);
-  const declarationKeys = exports_guard.Keys(declarations).filter((key) => !cyclicKeys.includes(key));
+  const declarationContext = Assign(context, declarations);
+  const declarationKeys = Keys(declarations).filter((key) => !cyclicKeys.includes(key));
   return declarationKeys.reduce((result, key) => {
     return { ...result, [key]: InstantiateType(declarationContext, State([], []), declarations[key]) };
   }, {});
@@ -5083,7 +4751,7 @@ function InstantiateModule(context, declarations, options) {
   const instantiatedCyclics = InstantiateCyclics(context, declarations, cyclicCandidates);
   const instantiatedNonCyclics = InstantiateNonCyclics(context, declarations, cyclicCandidates);
   const instantiatedModule = { ...instantiatedCyclics, ...instantiatedNonCyclics };
-  return exports_memory.Update(instantiatedModule, {}, options);
+  return Update(instantiatedModule, {}, options);
 }
 function ModuleInstantiate(context, _state, declarations, options) {
   const instantiatedModule = InstantiateModule(context, declarations, options);
@@ -5116,7 +4784,7 @@ function NonNullableOperation(type) {
   return ExcludeAction(type, excluded, {});
 }
 function NonNullableAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(NonNullableOperation(type), {}, options) : NonNullableDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(NonNullableOperation(type), {}, options) : NonNullableDeferred(type, options);
   return result;
 }
 function NonNullableInstantiate(context, state, type, options) {
@@ -5138,7 +4806,7 @@ function OmitDeferred(type, indexer, options = {}) {
   return Deferred("Omit", [type, indexer], options);
 }
 function Omit(type, indexer_or_keys, options = {}) {
-  const indexer = exports_guard.IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
+  const indexer = IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
   return OmitAction(type, indexer, options);
 }
 var init_omit = __esm(() => {
@@ -5161,9 +4829,9 @@ var init_to_indexable = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/omit/from_type.mjs
-function FromKeys(properties2, keys) {
-  const result = exports_guard.Keys(properties2).reduce((result2, key) => {
-    return keys.includes(key) ? result2 : { ...result2, [key]: properties2[key] };
+function FromKeys(properties, keys) {
+  const result = Keys(properties).reduce((result, key) => {
+    return keys.includes(key) ? result : { ...result, [key]: properties[key] };
   }, {});
   return result;
 }
@@ -5183,7 +4851,7 @@ var init_from_type6 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/omit/instantiate.mjs
 function OmitAction(type, indexer, options) {
-  const result = CanInstantiate([type, indexer]) ? exports_memory.Update(FromType14(type, indexer), {}, options) : OmitDeferred(type, indexer, options);
+  const result = CanInstantiate([type, indexer]) ? Update(FromType14(type, indexer), {}, options) : OmitDeferred(type, indexer, options);
   return result;
 }
 function OmitInstantiate(context, state, type, indexer, options) {
@@ -5218,7 +4886,7 @@ function ParametersOperation(type) {
   return result;
 }
 function ParametersAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(ParametersOperation(type), {}, options) : ParametersDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(ParametersOperation(type), {}, options) : ParametersDeferred(type, options);
   return result;
 }
 function ParametersInstantiate(context, state, type, options) {
@@ -5248,10 +4916,10 @@ var init_partial = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/partial/from_cyclic.mjs
-function FromCyclic3(defs, ref2) {
-  const target2 = CyclicTarget(defs, ref2);
-  const partial = FromType15(target2);
-  const result = Cyclic(exports_memory.Assign(defs, { [ref2]: partial }), ref2);
+function FromCyclic3(defs, ref) {
+  const target = CyclicTarget(defs, ref);
+  const partial = FromType15(target);
+  const result = Cyclic(Assign(defs, { [ref]: partial }), ref);
   return result;
 }
 var init_from_cyclic3 = __esm(() => {
@@ -5294,9 +4962,9 @@ var init_from_union4 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/partial/from_object.mjs
-function FromObject6(properties2) {
-  const mapped = exports_guard.Keys(properties2).reduce((result2, left) => {
-    return { ...result2, [left]: AddOptional(properties2[left]) };
+function FromObject6(properties) {
+  const mapped = Keys(properties).reduce((result, left) => {
+    return { ...result, [left]: AddOptional(properties[left]) };
   }, {});
   const result = _Object_(mapped);
   return result;
@@ -5326,7 +4994,7 @@ var init_from_type7 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/partial/instantiate.mjs
 function PartialAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType15(type), {}, options) : PartialDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType15(type), {}, options) : PartialDeferred(type, options);
   return result;
 }
 function PartialInstantiate(context, state, type, options) {
@@ -5345,7 +5013,7 @@ function PickDeferred(type, indexer, options = {}) {
   return Deferred("Pick", [type, indexer], options);
 }
 function Pick(type, indexer_or_keys, options = {}) {
-  const indexer = exports_guard.IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
+  const indexer = IsArray(indexer_or_keys) ? KeysToIndexer(indexer_or_keys) : indexer_or_keys;
   return PickAction(type, indexer, options);
 }
 var init_pick = __esm(() => {
@@ -5356,9 +5024,9 @@ var init_pick = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/pick/from_type.mjs
-function FromKeys2(properties2, keys) {
-  const result = exports_guard.Keys(properties2).reduce((result2, key) => {
-    return keys.includes(key) ? exports_memory.Assign(result2, { [key]: properties2[key] }) : result2;
+function FromKeys2(properties, keys) {
+  const result = Keys(properties).reduce((result, key) => {
+    return keys.includes(key) ? Assign(result, { [key]: properties[key] }) : result;
   }, {});
   return result;
 }
@@ -5379,7 +5047,7 @@ var init_from_type8 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/pick/instantiate.mjs
 function PickAction(type, indexer, options) {
-  const result = CanInstantiate([type, indexer]) ? exports_memory.Update(FromType16(type, indexer), {}, options) : PickDeferred(type, indexer, options);
+  const result = CanInstantiate([type, indexer]) ? Update(FromType16(type, indexer), {}, options) : PickDeferred(type, indexer, options);
   return result;
 }
 function PickInstantiate(context, state, type, indexer, options) {
@@ -5419,10 +5087,10 @@ var init_from_array3 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/readonly_object/from_cyclic.mjs
-function FromCyclic4(defs, ref2) {
-  const target2 = CyclicTarget(defs, ref2);
-  const partial = FromType17(target2);
-  const result = Cyclic(exports_memory.Assign(defs, { [ref2]: partial }), ref2);
+function FromCyclic4(defs, ref) {
+  const target = CyclicTarget(defs, ref);
+  const partial = FromType17(target);
+  const result = Cyclic(Assign(defs, { [ref]: partial }), ref);
   return result;
 }
 var init_from_cyclic4 = __esm(() => {
@@ -5455,9 +5123,9 @@ var init_from_intersect4 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/readonly_object/from_object.mjs
-function FromObject7(properties2) {
-  const mapped = exports_guard.Keys(properties2).reduce((result2, left) => {
-    return { ...result2, [left]: AddReadonly(properties2[left]) };
+function FromObject7(properties) {
+  const mapped = Keys(properties).reduce((result, left) => {
+    return { ...result, [left]: AddReadonly(properties[left]) };
   }, {});
   const result = _Object_(mapped);
   return result;
@@ -5511,7 +5179,7 @@ var init_from_type9 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/readonly_object/instantiate.mjs
 function ReadonlyObjectAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType17(type), {}, options) : ReadonlyObjectDeferred(type);
+  const result = CanInstantiate([type]) ? Update(FromType17(type), {}, options) : ReadonlyObjectDeferred(type);
   return result;
 }
 function ReadonlyObjectInstantiate(context, state, type, options) {
@@ -5526,8 +5194,8 @@ var init_instantiate22 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/ref/instantiate.mjs
-function RefInstantiate(context, state, type, ref2) {
-  return state.visited.includes(ref2) ? type : (ref2 in context) ? InstantiateType(context, State(state["callstack"], [...state["visited"], ref2]), context[ref2]) : type;
+function RefInstantiate(context, state, type, ref) {
+  return state.visited.includes(ref) ? type : (ref in context) ? InstantiateType(context, State(state["callstack"], [...state["visited"], ref]), context[ref]) : type;
 }
 var init_instantiate23 = __esm(() => {
   init_instantiate27();
@@ -5535,10 +5203,10 @@ var init_instantiate23 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/required/from_cyclic.mjs
-function FromCyclic5(defs, ref2) {
-  const target2 = CyclicTarget(defs, ref2);
-  const partial = FromType18(target2);
-  const result = Cyclic(exports_memory.Assign(defs, { [ref2]: partial }), ref2);
+function FromCyclic5(defs, ref) {
+  const target = CyclicTarget(defs, ref);
+  const partial = FromType18(target);
+  const result = Cyclic(Assign(defs, { [ref]: partial }), ref);
   return result;
 }
 var init_from_cyclic5 = __esm(() => {
@@ -5581,9 +5249,9 @@ var init_from_union6 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/required/from_object.mjs
-function FromObject8(properties2) {
-  const mapped = exports_guard.Keys(properties2).reduce((result2, left) => {
-    return { ...result2, [left]: RemoveOptional(properties2[left]) };
+function FromObject8(properties) {
+  const mapped = Keys(properties).reduce((result, left) => {
+    return { ...result, [left]: RemoveOptional(properties[left]) };
   }, {});
   const result = _Object_(mapped);
   return result;
@@ -5625,7 +5293,7 @@ var init_required = __esm(() => {
 
 // node_modules/typebox/build/type/engine/required/instantiate.mjs
 function RequiredAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(FromType18(type), {}, options) : RequiredDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(FromType18(type), {}, options) : RequiredDeferred(type, options);
   return result;
 }
 function RequiredInstantiate(context, state, type, options) {
@@ -5656,7 +5324,7 @@ function ReturnTypeOperation(type) {
   return IsFunction2(type) ? type["returnType"] : Never();
 }
 function ReturnTypeAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(ReturnTypeOperation(type), {}, options) : ReturnTypeDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(ReturnTypeOperation(type), {}, options) : ReturnTypeDeferred(type, options);
   return result;
 }
 function ReturnTypeInstantiate(context, state, type, options = {}) {
@@ -5685,7 +5353,7 @@ var init_with = __esm(() => {
 
 // node_modules/typebox/build/type/engine/with/instantiate.mjs
 function WithAction(type, options) {
-  const result = CanInstantiate([type]) ? exports_memory.Update(type, {}, options) : WithDeferred(type, options);
+  const result = CanInstantiate([type]) ? Update(type, {}, options) : WithDeferred(type, options);
   return result;
 }
 function WithInstantiate(context, state, type, options) {
@@ -5704,8 +5372,8 @@ function SpreadElement(type) {
   return result;
 }
 function RestSpread(types) {
-  const result = types.reduce((result2, left) => {
-    return [...result2, ...SpreadElement(left)];
+  const result = types.reduce((result, left) => {
+    return [...result, ...SpreadElement(left)];
   }, []);
   return result;
 }
@@ -5727,11 +5395,11 @@ function State(callstack, visited) {
   return { callstack, visited };
 }
 function CanInstantiate(types) {
-  return exports_guard.ShiftLeft(types, (left, right) => IsRef(left) ? false : CanInstantiate(right), () => true);
+  return ShiftLeft(types, (left, right) => IsRef(left) ? false : CanInstantiate(right), () => true);
 }
-function InstantiateProperties(context, state, properties2) {
-  return exports_guard.Keys(properties2).reduce((result, key) => {
-    return { ...result, [key]: InstantiateType(context, state, properties2[key]) };
+function InstantiateProperties(context, state, properties) {
+  return Keys(properties).reduce((result, key) => {
+    return { ...result, [key]: InstantiateType(context, state, properties[key]) };
   }, {});
 }
 function InstantiateElements(context, state, types) {
@@ -5749,10 +5417,10 @@ function WithModifiers(type, instantiatedType) {
   return withImmutable;
 }
 function InstantiateDeferred(context, state, action, parameters, options) {
-  return exports_guard.IsEqual(action, "AddImmutable") ? AddImmutableInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "RemoveImmutable") ? RemoveImmutableInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "AddReadonly") ? AddReadonlyInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "RemoveReadonly") ? RemoveReadonlyInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "AddOptional") ? AddOptionalInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "RemoveOptional") ? RemoveOptionalInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Capitalize") ? CapitalizeInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Conditional") ? ConditionalInstantiate(context, state, parameters[0], parameters[1], parameters[2], parameters[3], options) : exports_guard.IsEqual(action, "ConstructorParameters") ? ConstructorParametersInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Evaluate") ? EvaluateInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Exclude") ? ExcludeInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "Extract") ? ExtractInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "Index") ? IndexInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "InstanceType") ? InstanceTypeInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Interface") ? InterfaceInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "KeyOf") ? KeyOfInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Lowercase") ? LowercaseInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Mapped") ? MappedInstantiate(context, state, parameters[0], parameters[1], parameters[2], parameters[3], options) : exports_guard.IsEqual(action, "Module") ? ModuleInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "NonNullable") ? NonNullableInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Pick") ? PickInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "Parameters") ? ParametersInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Partial") ? PartialInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Omit") ? OmitInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "ReadonlyObject") ? ReadonlyObjectInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Record") ? RecordInstantiate(context, state, parameters[0], parameters[1], options) : exports_guard.IsEqual(action, "Required") ? RequiredInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "ReturnType") ? ReturnTypeInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "TemplateLiteral") ? TemplateLiteralInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Uncapitalize") ? UncapitalizeInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "Uppercase") ? UppercaseInstantiate(context, state, parameters[0], options) : exports_guard.IsEqual(action, "With") ? WithInstantiate(context, state, parameters[0], parameters[1]) : Deferred(action, parameters, options);
+  return IsEqual(action, "AddImmutable") ? AddImmutableInstantiate(context, state, parameters[0], options) : IsEqual(action, "RemoveImmutable") ? RemoveImmutableInstantiate(context, state, parameters[0], options) : IsEqual(action, "AddReadonly") ? AddReadonlyInstantiate(context, state, parameters[0], options) : IsEqual(action, "RemoveReadonly") ? RemoveReadonlyInstantiate(context, state, parameters[0], options) : IsEqual(action, "AddOptional") ? AddOptionalInstantiate(context, state, parameters[0], options) : IsEqual(action, "RemoveOptional") ? RemoveOptionalInstantiate(context, state, parameters[0], options) : IsEqual(action, "Capitalize") ? CapitalizeInstantiate(context, state, parameters[0], options) : IsEqual(action, "Conditional") ? ConditionalInstantiate(context, state, parameters[0], parameters[1], parameters[2], parameters[3], options) : IsEqual(action, "ConstructorParameters") ? ConstructorParametersInstantiate(context, state, parameters[0], options) : IsEqual(action, "Evaluate") ? EvaluateInstantiate(context, state, parameters[0], options) : IsEqual(action, "Exclude") ? ExcludeInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "Extract") ? ExtractInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "Index") ? IndexInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "InstanceType") ? InstanceTypeInstantiate(context, state, parameters[0], options) : IsEqual(action, "Interface") ? InterfaceInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "KeyOf") ? KeyOfInstantiate(context, state, parameters[0], options) : IsEqual(action, "Lowercase") ? LowercaseInstantiate(context, state, parameters[0], options) : IsEqual(action, "Mapped") ? MappedInstantiate(context, state, parameters[0], parameters[1], parameters[2], parameters[3], options) : IsEqual(action, "Module") ? ModuleInstantiate(context, state, parameters[0], options) : IsEqual(action, "NonNullable") ? NonNullableInstantiate(context, state, parameters[0], options) : IsEqual(action, "Pick") ? PickInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "Parameters") ? ParametersInstantiate(context, state, parameters[0], options) : IsEqual(action, "Partial") ? PartialInstantiate(context, state, parameters[0], options) : IsEqual(action, "Omit") ? OmitInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "ReadonlyObject") ? ReadonlyObjectInstantiate(context, state, parameters[0], options) : IsEqual(action, "Record") ? RecordInstantiate(context, state, parameters[0], parameters[1], options) : IsEqual(action, "Required") ? RequiredInstantiate(context, state, parameters[0], options) : IsEqual(action, "ReturnType") ? ReturnTypeInstantiate(context, state, parameters[0], options) : IsEqual(action, "TemplateLiteral") ? TemplateLiteralInstantiate(context, state, parameters[0], options) : IsEqual(action, "Uncapitalize") ? UncapitalizeInstantiate(context, state, parameters[0], options) : IsEqual(action, "Uppercase") ? UppercaseInstantiate(context, state, parameters[0], options) : IsEqual(action, "With") ? WithInstantiate(context, state, parameters[0], parameters[1]) : Deferred(action, parameters, options);
 }
 function InstantiateImmediate(context, state, type) {
-  const instantiatedType = IsRef(type) ? RefInstantiate(context, state, type, type.$ref) : IsArray2(type) ? _Array_(InstantiateType(context, state, type.items), ArrayOptions(type)) : IsCall(type) ? CallInstantiate(context, state, type.target, type.arguments) : IsConstructor2(type) ? Constructor(InstantiateTypes(context, state, type.parameters), InstantiateType(context, state, type.instanceType), ConstructorOptions(type)) : IsFunction2(type) ? _Function_(InstantiateTypes(context, state, type.parameters), InstantiateType(context, state, type.returnType), FunctionOptions(type)) : IsDependent(type) ? Dependent(InstantiateType(context, state, type.if), InstantiateType(context, state, type.then), InstantiateType(context, state, type.else), DependentOptions(type)) : IsIntersect(type) ? Intersect(InstantiateTypes(context, state, type.allOf), IntersectOptions(type)) : IsObject2(type) ? _Object_(InstantiateProperties(context, state, type.properties), ObjectOptions(type)) : IsRecord(type) ? RecordFromPattern(RecordPattern(type), InstantiateType(context, state, RecordValue(type))) : IsRest(type) ? Rest(InstantiateType(context, state, type.items)) : IsTuple(type) ? Tuple(InstantiateElements(context, state, type.items), TupleOptions(type)) : IsUnion(type) ? Union(InstantiateTypes(context, state, type.anyOf), UnionOptions(type)) : type;
+  const instantiatedType = IsRef(type) ? RefInstantiate(context, state, type, type.$ref) : IsArray2(type) ? _Array_(InstantiateType(context, state, type.items), ArrayOptions(type)) : IsCall(type) ? CallInstantiate(context, state, type.target, type.arguments) : IsConstructor(type) ? Constructor(InstantiateTypes(context, state, type.parameters), InstantiateType(context, state, type.instanceType), ConstructorOptions(type)) : IsFunction2(type) ? _Function_(InstantiateTypes(context, state, type.parameters), InstantiateType(context, state, type.returnType), FunctionOptions(type)) : IsDependent(type) ? Dependent(InstantiateType(context, state, type.if), InstantiateType(context, state, type.then), InstantiateType(context, state, type.else), DependentOptions(type)) : IsIntersect(type) ? Intersect(InstantiateTypes(context, state, type.allOf), IntersectOptions(type)) : IsObject2(type) ? _Object_(InstantiateProperties(context, state, type.properties), ObjectOptions(type)) : IsRecord(type) ? RecordFromPattern(RecordPattern(type), InstantiateType(context, state, RecordValue(type))) : IsRest(type) ? Rest(InstantiateType(context, state, type.items)) : IsTuple(type) ? Tuple(InstantiateElements(context, state, type.items), TupleOptions(type)) : IsUnion(type) ? Union(InstantiateTypes(context, state, type.anyOf), UnionOptions(type)) : type;
   const withModifiers = WithModifiers(type, instantiatedType);
   return withModifiers;
 }
@@ -5823,10 +5491,10 @@ var init_instantiate27 = __esm(() => {
 
 // node_modules/typebox/build/type/engine/immutable/instantiate_add.mjs
 function AddImmutableOperation(type) {
-  return exports_memory.Update(type, { "~immutable": true }, {});
+  return Update(type, { "~immutable": true }, {});
 }
 function AddImmutableAction(type, options) {
-  const result = exports_memory.Update(AddImmutableOperation(type), {}, options);
+  const result = Update(AddImmutableOperation(type), {}, options);
   return result;
 }
 function AddImmutableInstantiate(context, state, type, options) {
@@ -5851,12 +5519,6 @@ var init__add_immutable = __esm(() => {
 });
 
 // node_modules/typebox/build/type/action/_remove_immutable.mjs
-function RemoveImmutableDeferred(type, options = {}) {
-  return Deferred("RemoveImmutable", [type], options);
-}
-function RemoveImmutable(type, options = {}) {
-  return RemoveImmutableAction(type, options);
-}
 var init__remove_immutable = __esm(() => {
   init_deferred();
   init_instantiate_remove3();
@@ -6018,21 +5680,6 @@ var init_pick2 = __esm(() => {
 });
 
 // node_modules/typebox/build/type/engine/priority/priority.mjs
-function Comparer(left, right) {
-  const compareResult = Compare(left, right);
-  const result = exports_guard.IsEqual(compareResult, "right-inside") ? 1 : exports_guard.IsEqual(compareResult, "disjoint") ? 1 : 0;
-  return result;
-}
-function Insert(type, types, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => exports_guard.IsEqual(Comparer(type, left), 1) ? Insert(type, right, [...result, left]) : [...result, type, ...types], () => [...result, type]);
-}
-function Sort(types, result = []) {
-  return exports_guard.ShiftLeft(types, (left, right) => Sort(right, Insert(left, result)), () => result);
-}
-function Priority(types) {
-  const result = Sort(types);
-  return result;
-}
 var init_priority = __esm(() => {
   init_guard2();
   init_compare();
@@ -6072,11 +5719,6 @@ var init_return_type3 = __esm(() => {
 var init_static2 = () => {};
 
 // node_modules/typebox/build/type/engine/template_literal/is_pattern.mjs
-function IsTemplateLiteralPattern(pattern2) {
-  const types = ParsePatternIntoTypes(pattern2);
-  const result = exports_guard.IsEqual(types.length, 0) ? false : true;
-  return result;
-}
 var init_is_pattern = __esm(() => {
   init_guard2();
   init_pattern();
@@ -6134,14 +5776,14 @@ var init_engine = __esm(() => {
 
 // node_modules/typebox/build/type/script/script.mjs
 function Script2(...args) {
-  const [context, input, options] = exports_arguments.Match(args, {
-    2: (script, options2) => exports_guard.IsString(script) ? [{}, script, options2] : [script, options2, {}],
-    3: (context2, script, options2) => [context2, script, options2],
+  const [context, input, options] = Match(args, {
+    2: (script, options) => IsString(script) ? [{}, script, options] : [script, options, {}],
+    3: (context, script, options) => [context, script, options],
     1: (script) => [{}, script, {}]
   });
   const result = Script(input);
-  const parsed = exports_guard.IsArray(result) && exports_guard.IsEqual(result.length, 2) ? InstantiateType(context, State([], []), result[0]) : Never();
-  return exports_memory.Update(parsed, {}, options);
+  const parsed = IsArray(result) && IsEqual(result.length, 2) ? InstantiateType(context, State([], []), result[0]) : Never();
+  return Update(parsed, {}, options);
 }
 var init_script = __esm(() => {
   init_arguments();
@@ -6197,10 +5839,10 @@ __export(exports_typebox, {
   IsAny: () => IsAny,
   IsArray: () => IsArray2,
   IsBigInt: () => IsBigInt2,
-  IsBoolean: () => IsBoolean3,
+  IsBoolean: () => IsBoolean2,
   IsCall: () => IsCall,
   IsCodec: () => IsCodec,
-  IsConstructor: () => IsConstructor2,
+  IsConstructor: () => IsConstructor,
   IsCyclic: () => IsCyclic,
   IsDependent: () => IsDependent,
   IsEnum: () => IsEnum,
@@ -6216,7 +5858,7 @@ __export(exports_typebox, {
   IsLiteral: () => IsLiteral,
   IsNever: () => IsNever,
   IsNull: () => IsNull2,
-  IsNumber: () => IsNumber3,
+  IsNumber: () => IsNumber2,
   IsObject: () => IsObject2,
   IsOptional: () => IsOptional,
   IsParameter: () => IsParameter,
@@ -6226,12 +5868,12 @@ __export(exports_typebox, {
   IsRefine: () => IsRefine,
   IsRest: () => IsRest,
   IsSchema: () => IsSchema,
-  IsString: () => IsString3,
-  IsSymbol: () => IsSymbol2,
+  IsString: () => IsString2,
+  IsSymbol: () => IsSymbol,
   IsTemplateLiteral: () => IsTemplateLiteral,
   IsThis: () => IsThis,
   IsTuple: () => IsTuple,
-  IsUndefined: () => IsUndefined2,
+  IsUndefined: () => IsUndefined,
   IsUnion: () => IsUnion,
   IsUnknown: () => IsUnknown,
   IsUnsafe: () => IsUnsafe,
@@ -6350,296 +5992,6 @@ var init_typebox = __esm(() => {
 });
 
 // node_modules/typebox/build/index.mjs
-var exports_build = {};
-__export(exports_build, {
-  AddImmutable: () => AddImmutable,
-  AddImmutableDeferred: () => AddImmutableDeferred,
-  AddOptional: () => AddOptional,
-  AddOptionalDeferred: () => AddOptionalDeferred,
-  AddReadonly: () => AddReadonly,
-  AddReadonlyDeferred: () => AddReadonlyDeferred,
-  Any: () => Any,
-  Array: () => _Array_,
-  ArrayOptions: () => ArrayOptions,
-  BigInt: () => BigInt2,
-  BigIntPattern: () => BigIntPattern,
-  Boolean: () => Boolean2,
-  Broaden: () => Broaden,
-  Call: () => Call,
-  CallConstruct: () => CallConstruct,
-  Capitalize: () => Capitalize,
-  CapitalizeAction: () => CapitalizeAction,
-  CapitalizeDeferred: () => CapitalizeDeferred,
-  CapitalizeInstantiate: () => CapitalizeInstantiate,
-  Codec: () => Codec,
-  CollapseToObject: () => CollapseToObject,
-  Compare: () => Compare,
-  Composite: () => Composite,
-  Conditional: () => Conditional,
-  ConditionalAction: () => ConditionalAction,
-  ConditionalDeferred: () => ConditionalDeferred,
-  ConditionalInstantiate: () => ConditionalInstantiate,
-  Constructor: () => Constructor,
-  ConstructorOptions: () => ConstructorOptions,
-  ConstructorParameters: () => ConstructorParameters,
-  ConstructorParametersAction: () => ConstructorParametersAction,
-  ConstructorParametersDeferred: () => ConstructorParametersDeferred,
-  ConstructorParametersInstantiate: () => ConstructorParametersInstantiate,
-  ConvertToIntegerKey: () => ConvertToIntegerKey,
-  Cyclic: () => Cyclic,
-  CyclicCandidates: () => CyclicCandidates,
-  CyclicCheck: () => CyclicCheck,
-  CyclicDependencies: () => CyclicDependencies,
-  CyclicExtends: () => CyclicExtends,
-  CyclicOptions: () => CyclicOptions,
-  CyclicTarget: () => CyclicTarget,
-  Decode: () => Decode,
-  DecodeBuilder: () => DecodeBuilder,
-  Deferred: () => Deferred,
-  Dependent: () => Dependent,
-  DependentOptions: () => DependentOptions,
-  Distribute: () => Distribute,
-  Encode: () => Encode,
-  EncodeBuilder: () => EncodeBuilder,
-  Enum: () => Enum,
-  Evaluate: () => Evaluate,
-  EvaluateAction: () => EvaluateAction,
-  EvaluateDeferred: () => EvaluateDeferred,
-  EvaluateDependent: () => EvaluateDependent,
-  EvaluateEnum: () => EvaluateEnum,
-  EvaluateInstantiate: () => EvaluateInstantiate,
-  EvaluateIntersect: () => EvaluateIntersect,
-  EvaluateTemplateLiteral: () => EvaluateTemplateLiteral,
-  EvaluateType: () => EvaluateType,
-  EvaluateUnion: () => EvaluateUnion,
-  EvaluateUnionFast: () => EvaluateUnionFast,
-  Exclude: () => Exclude,
-  ExcludeAction: () => ExcludeAction,
-  ExcludeDeferred: () => ExcludeDeferred,
-  ExcludeInstantiate: () => ExcludeInstantiate,
-  Extends: () => Extends,
-  ExtendsResult: () => exports_result,
-  Extract: () => Extract,
-  ExtractAction: () => ExtractAction,
-  ExtractDeferred: () => ExtractDeferred,
-  ExtractInstantiate: () => ExtractInstantiate,
-  Flatten: () => Flatten,
-  Function: () => _Function_,
-  FunctionOptions: () => FunctionOptions,
-  Generic: () => Generic,
-  Identifier: () => Identifier,
-  Immutable: () => Immutable,
-  Index: () => Index,
-  IndexAction: () => IndexAction,
-  IndexDeferred: () => IndexDeferred,
-  IndexInstantiate: () => IndexInstantiate,
-  Infer: () => Infer,
-  InstanceType: () => InstanceType,
-  InstanceTypeAction: () => InstanceTypeAction,
-  InstanceTypeDeferred: () => InstanceTypeDeferred,
-  InstanceTypeInstantiate: () => InstanceTypeInstantiate,
-  Instantiate: () => Instantiate,
-  InstantiateCyclic: () => InstantiateCyclic,
-  Integer: () => Integer,
-  IntegerKey: () => IntegerKey,
-  IntegerPattern: () => IntegerPattern,
-  Interface: () => Interface,
-  InterfaceAction: () => InterfaceAction,
-  InterfaceDeferred: () => InterfaceDeferred,
-  InterfaceInstantiate: () => InterfaceInstantiate,
-  Intersect: () => Intersect,
-  IntersectOptions: () => IntersectOptions,
-  InvalidLiteralValue: () => InvalidLiteralValue,
-  IsAny: () => IsAny,
-  IsArray: () => IsArray2,
-  IsBigInt: () => IsBigInt2,
-  IsBoolean: () => IsBoolean3,
-  IsCall: () => IsCall,
-  IsCodec: () => IsCodec,
-  IsConstructor: () => IsConstructor2,
-  IsCyclic: () => IsCyclic,
-  IsDeferred: () => IsDeferred,
-  IsDependent: () => IsDependent,
-  IsEnum: () => IsEnum,
-  IsEnumValue: () => IsEnumValue,
-  IsFunction: () => IsFunction2,
-  IsGeneric: () => IsGeneric,
-  IsIdentifier: () => IsIdentifier,
-  IsImmutable: () => IsImmutable,
-  IsInfer: () => IsInfer,
-  IsInteger: () => IsInteger2,
-  IsInterfaceDeferred: () => IsInterfaceDeferred,
-  IsIntersect: () => IsIntersect,
-  IsKind: () => IsKind,
-  IsLiteral: () => IsLiteral,
-  IsLiteralBigInt: () => IsLiteralBigInt,
-  IsLiteralBoolean: () => IsLiteralBoolean,
-  IsLiteralNumber: () => IsLiteralNumber,
-  IsLiteralString: () => IsLiteralString,
-  IsLiteralValue: () => IsLiteralValue,
-  IsNever: () => IsNever,
-  IsNull: () => IsNull2,
-  IsNumber: () => IsNumber3,
-  IsObject: () => IsObject2,
-  IsOptional: () => IsOptional,
-  IsParameter: () => IsParameter,
-  IsReadonly: () => IsReadonly,
-  IsRecord: () => IsRecord,
-  IsRef: () => IsRef,
-  IsRefine: () => IsRefine,
-  IsRefinement: () => IsRefinement,
-  IsRest: () => IsRest,
-  IsSchema: () => IsSchema,
-  IsString: () => IsString3,
-  IsSymbol: () => IsSymbol2,
-  IsTemplateLiteral: () => IsTemplateLiteral,
-  IsTemplateLiteralDeferred: () => IsTemplateLiteralDeferred,
-  IsTemplateLiteralFinite: () => IsTemplateLiteralFinite,
-  IsTemplateLiteralPattern: () => IsTemplateLiteralPattern,
-  IsThis: () => IsThis,
-  IsTuple: () => IsTuple,
-  IsTypeScriptEnumLike: () => IsTypeScriptEnumLike,
-  IsUndefined: () => IsUndefined2,
-  IsUnion: () => IsUnion,
-  IsUnknown: () => IsUnknown,
-  IsUnsafe: () => IsUnsafe,
-  IsVoid: () => IsVoid,
-  KeyOf: () => KeyOf2,
-  KeyOfAction: () => KeyOfAction,
-  KeyOfDeferred: () => KeyOfDeferred,
-  KeyOfInstantiate: () => KeyOfInstantiate,
-  KeysToIndexer: () => KeysToIndexer,
-  Literal: () => Literal,
-  LiteralTypeName: () => LiteralTypeName,
-  Lowercase: () => Lowercase,
-  LowercaseAction: () => LowercaseAction,
-  LowercaseDeferred: () => LowercaseDeferred,
-  LowercaseInstantiate: () => LowercaseInstantiate,
-  Mapped: () => Mapped,
-  MappedAction: () => MappedAction,
-  MappedDeferred: () => MappedDeferred,
-  MappedInstantiate: () => MappedInstantiate,
-  Module: () => Module2,
-  ModuleDeferred: () => ModuleDeferred,
-  ModuleInstantiate: () => ModuleInstantiate,
-  Narrow: () => Narrow,
-  Never: () => Never,
-  NeverPattern: () => NeverPattern,
-  NonNullable: () => NonNullable,
-  NonNullableAction: () => NonNullableAction,
-  NonNullableDeferred: () => NonNullableDeferred,
-  NonNullableInstantiate: () => NonNullableInstantiate,
-  Null: () => Null,
-  Number: () => Number2,
-  NumberKey: () => NumberKey,
-  NumberPattern: () => NumberPattern,
-  Object: () => _Object_,
-  ObjectOptions: () => ObjectOptions,
-  Omit: () => Omit,
-  OmitAction: () => OmitAction,
-  OmitDeferred: () => OmitDeferred,
-  OmitInstantiate: () => OmitInstantiate,
-  Optional: () => Optional,
-  Parameter: () => Parameter,
-  Parameters: () => Parameters,
-  ParametersAction: () => ParametersAction,
-  ParametersDeferred: () => ParametersDeferred,
-  ParametersInstantiate: () => ParametersInstantiate,
-  ParsePatternIntoTypes: () => ParsePatternIntoTypes,
-  ParseTemplateIntoTypes: () => ParseTemplateIntoTypes,
-  Partial: () => Partial,
-  PartialAction: () => PartialAction,
-  PartialDeferred: () => PartialDeferred,
-  PartialInstantiate: () => PartialInstantiate,
-  Pick: () => Pick,
-  PickAction: () => PickAction,
-  PickDeferred: () => PickDeferred,
-  PickInstantiate: () => PickInstantiate,
-  Priority: () => Priority,
-  PropertyKeys: () => PropertyKeys,
-  PropertyValues: () => PropertyValues,
-  Readonly: () => Readonly,
-  ReadonlyObject: () => ReadonlyObject,
-  ReadonlyObjectAction: () => ReadonlyObjectAction,
-  ReadonlyObjectDeferred: () => ReadonlyObjectDeferred,
-  ReadonlyObjectInstantiate: () => ReadonlyObjectInstantiate,
-  ReadonlyType: () => ReadonlyType,
-  Record: () => Record,
-  RecordAction: () => RecordAction,
-  RecordDeferred: () => RecordDeferred,
-  RecordFromPattern: () => RecordFromPattern,
-  RecordInstantiate: () => RecordInstantiate,
-  RecordKey: () => RecordKey,
-  RecordOptions: () => RecordOptions,
-  RecordPattern: () => RecordPattern,
-  RecordPatternToType: () => RecordPatternToType,
-  RecordValue: () => RecordValue,
-  Ref: () => Ref,
-  RefInstantiate: () => RefInstantiate,
-  Refine: () => Refine,
-  RefineAdd: () => RefineAdd,
-  RemoveImmutable: () => RemoveImmutable,
-  RemoveImmutableDeferred: () => RemoveImmutableDeferred,
-  RemoveOptional: () => RemoveOptional,
-  RemoveOptionalDeferred: () => RemoveOptionalDeferred,
-  RemoveReadonly: () => RemoveReadonly,
-  RemoveReadonlyDeferred: () => RemoveReadonlyDeferred,
-  Required: () => Required,
-  RequiredAction: () => RequiredAction,
-  RequiredArray: () => RequiredArray,
-  RequiredDeferred: () => RequiredDeferred,
-  RequiredInstantiate: () => RequiredInstantiate,
-  Rest: () => Rest,
-  ResultDisjoint: () => ResultDisjoint,
-  ResultEqual: () => ResultEqual,
-  ResultLeftInside: () => ResultLeftInside,
-  ResultRightInside: () => ResultRightInside,
-  ReturnType: () => ReturnType,
-  ReturnTypeAction: () => ReturnTypeAction,
-  ReturnTypeDeferred: () => ReturnTypeDeferred,
-  ReturnTypeInstantiate: () => ReturnTypeInstantiate,
-  Script: () => Script2,
-  String: () => String2,
-  StringKey: () => StringKey,
-  StringPattern: () => StringPattern,
-  Symbol: () => Symbol2,
-  TemplateLiteral: () => TemplateLiteral2,
-  TemplateLiteralCreate: () => TemplateLiteralCreate,
-  TemplateLiteralDecode: () => TemplateLiteralDecode,
-  TemplateLiteralDecodeUnsafe: () => TemplateLiteralDecodeUnsafe,
-  TemplateLiteralDeferred: () => TemplateLiteralDeferred,
-  TemplateLiteralEncode: () => TemplateLiteralEncode,
-  TemplateLiteralFromString: () => TemplateLiteralFromString,
-  TemplateLiteralFromTypes: () => TemplateLiteralFromTypes,
-  This: () => This,
-  Tuple: () => Tuple,
-  TupleOptions: () => TupleOptions,
-  Type: () => exports_typebox,
-  TypeScriptEnumToEnumValues: () => TypeScriptEnumToEnumValues,
-  Uncapitalize: () => Uncapitalize,
-  UncapitalizeAction: () => UncapitalizeAction,
-  UncapitalizeDeferred: () => UncapitalizeDeferred,
-  UncapitalizeInstantiate: () => UncapitalizeInstantiate,
-  Undefined: () => Undefined,
-  Union: () => Union,
-  UnionOptions: () => UnionOptions,
-  Unknown: () => Unknown,
-  Unsafe: () => Unsafe,
-  Uppercase: () => Uppercase,
-  UppercaseAction: () => UppercaseAction,
-  UppercaseDeferred: () => UppercaseDeferred,
-  UppercaseInstantiate: () => UppercaseInstantiate,
-  Void: () => Void,
-  With: () => With2,
-  WithAction: () => WithAction,
-  WithDeferred: () => WithDeferred,
-  WithInstantiate: () => WithInstantiate,
-  _Array_: () => _Array_,
-  _Function_: () => _Function_,
-  _Object_: () => _Object_,
-  default: () => build_default
-});
-var build_default;
 var init_build = __esm(() => {
   init_typebox();
   init_typebox();
@@ -6648,7 +6000,6 @@ var init_build = __esm(() => {
   init_extends3();
   init_script2();
   init_types();
-  build_default = exports_typebox;
 });
 
 // src/host.ts
@@ -7484,8 +6835,8 @@ function completeHeadroomCommand(prefix, testSurfaces) {
       }
     ];
     const suffix = normalized.slice("clear".length).trim();
-    const matches2 = suffix ? options.filter((option) => option.label.startsWith(suffix)) : options;
-    return matches2.length ? matches2 : null;
+    const matches = suffix ? options.filter((option) => option.label.startsWith(suffix)) : options;
+    return matches.length ? matches : null;
   }
   if (normalized === "set" || normalized.startsWith("set ")) {
     const rest = String(prefix || "").toLowerCase().replace(/^\s*set\s+/, "");
@@ -8184,10 +7535,10 @@ function localCompressionLine(state) {
   const hasArchive = state.sessionArchiveCharsSaved > 0;
   const archiveSuffix = hasArchive ? ` · arch ${formatCompactTokens(state.sessionArchiveCharsSaved)}ch ×${formatInt(state.sessionArchiveCompactions)}` : "";
   if (ps && asNumber(ps.tokens_saved) > 0) {
-    const saved2 = asNumber(ps.tokens_saved);
-    const pct2 = asNumber(ps.savings_percent ?? ps.compression_pct);
+    const saved = asNumber(ps.tokens_saved);
+    const pct = asNumber(ps.savings_percent ?? ps.compression_pct);
     const pctLabel = hasArchive ? "proxy " : "";
-    return `saved ${formatCompactTokens(saved2)} · ${pctLabel}${formatPct(pct2)}${archiveSuffix}`;
+    return `saved ${formatCompactTokens(saved)} · ${pctLabel}${formatPct(pct)}${archiveSuffix}`;
   }
   const saved = Math.max(0, asNumber(state.tokensSaved));
   const pct = state.tokensBefore > 0 ? state.tokensSaved / state.tokensBefore * 100 : 0;
@@ -8379,8 +7730,8 @@ function commandFailure(result) {
   const detail = (result.err || result.out).trim();
   return detail ? clip(detail, 200) : `exit code ${result.code}`;
 }
-async function manageHeadroomUserService(action2, ctx, state, host = "omp") {
-  if (action2 === "status") {
+async function manageHeadroomUserService(action, ctx, state, host = "omp") {
+  if (action === "status") {
     const configured = existsSync3(USER_SYSTEMD_UNIT_PATH) || await systemdUnitAvailable();
     const active = await systemdUnitActive();
     ctx.ui.notify(`Headroom user service:
@@ -8389,7 +7740,7 @@ async function manageHeadroomUserService(action2, ctx, state, host = "omp") {
   path: ${USER_SYSTEMD_UNIT_PATH}`, "info");
     return;
   }
-  if (action2 === "install") {
+  if (action === "install") {
     if (!existsSync3(HEADROOM_BIN))
       await maintainInstall(ctx, state, true, host);
     if (!existsSync3(HEADROOM_BIN)) {
@@ -8408,9 +7759,9 @@ ${state.lastError}` : ""}`, "error");
       mkdirSync2(USER_SYSTEMD_DIR, { recursive: true });
       writeFileSync2(USER_SYSTEMD_UNIT_PATH, unit, "utf8");
     }
-    const reload2 = await run("systemctl", ["--user", "daemon-reload"], 30000);
-    if (reload2.code !== 0) {
-      ctx.ui.notify(`systemctl daemon-reload failed: ${commandFailure(reload2)}`, "error");
+    const reload = await run("systemctl", ["--user", "daemon-reload"], 30000);
+    if (reload.code !== 0) {
+      ctx.ui.notify(`systemctl daemon-reload failed: ${commandFailure(reload)}`, "error");
       return;
     }
     const enabled = await systemdCtl("enable", ["--now"]);
@@ -8898,11 +8249,11 @@ async function createHeadroomTranscriptFixture(ctx, state, surface, host = "omp"
   if (selected === "tool") {
     const source = headroomTestToolContent();
     try {
-      const result2 = await runHeadroomCompression(source, ctx, state, host);
-      if (typeof result2.compressed !== "string") {
+      const result = await runHeadroomCompression(source, ctx, state, host);
+      if (typeof result.compressed !== "string") {
         return { error: "proxy returned no shorter retrievable Headroom result" };
       }
-      toolTranscript = { source, compressed: result2.compressed, details: result2.details };
+      toolTranscript = { source, compressed: result.compressed, details: result.details };
     } catch (error) {
       return { error: errorMessage(error) };
     }
@@ -8998,11 +8349,11 @@ function toOpenAiPayloadMessages(payload) {
   return { messages, hadSystem: systemText !== undefined };
 }
 function fromOpenAiPayloadMessages(payload, compressedMessages, hadSystem) {
-  const rest3 = compressedMessages;
-  if (hadSystem && isRecord(rest3[0]) && rest3[0].role === "system") {
-    return { ...payload, system: rest3[0].content, messages: rest3.slice(1) };
+  const rest = compressedMessages;
+  if (hadSystem && isRecord(rest[0]) && rest[0].role === "system") {
+    return { ...payload, system: rest[0].content, messages: rest.slice(1) };
   }
-  return { ...payload, messages: rest3 };
+  return { ...payload, messages: rest };
 }
 function readArchivedAncestor(hash, sessionId) {
   try {
@@ -9074,16 +8425,16 @@ async function applyMessageSessionArchive(payload, provider, state, ctx) {
     return payload;
   if (provider === "anthropic") {
     const source = Array.isArray(payload.messages) ? payload.messages : [];
-    const candidate2 = createSessionCompaction(source);
-    if (!candidate2.compacted)
+    const candidate = createSessionCompaction(source);
+    if (!candidate.compacted)
       return payload;
-    const projected2 = {
+    const projected = {
       ...payload,
-      messages: candidate2.messages.map(asAnthropicArchiveMessage)
+      messages: candidate.messages.map(asAnthropicArchiveMessage)
     };
-    if (stableJson(projected2).length >= stableJson(payload).length)
+    if (stableJson(projected).length >= stableJson(payload).length)
       return payload;
-    return await persistSessionArchiveCandidate(candidate2, state, ctx) ? projected2 : payload;
+    return await persistSessionArchiveCandidate(candidate, state, ctx) ? projected : payload;
   }
   const { messages, hadSystem } = toOpenAiPayloadMessages(payload);
   const candidate = createSessionCompaction(messages);
@@ -9813,13 +9164,13 @@ function headroomExtension(pi) {
     if (modelUsesHeadroomProxy(ctx?.model)) {
       if (DEBUG_SIZING) {
         state._debugReqSeq = asNumber(state._debugReqSeq) + 1;
-        const seq2 = state._debugReqSeq;
-        debugSizingInput(state, seq2, payload);
-        debugSizingDiagnostic(state, seq2, {
+        const seq = state._debugReqSeq;
+        debugSizingInput(state, seq, payload);
+        debugSizingDiagnostic(state, seq, {
           skippedHeadroomProxy: true,
           format: Array.isArray(payload.messages) ? "messages" : "input"
         });
-        debugSizingOutput(state, seq2, payload);
+        debugSizingOutput(state, seq, payload);
       }
       return;
     }
@@ -9835,14 +9186,14 @@ function headroomExtension(pi) {
         })();
         let detail = {};
         if (Array.isArray(payload.input)) {
-          const types2 = {};
+          const types = {};
           let big = 0;
           let batchItems = 0;
           let batchChars = 0;
           const threshold = adaptiveMinChars(MIN_TOOL_TEXT_CHARS, contextUsageRatio(ctx));
           for (const it of payload.input) {
             const t = isRecord(it) ? String(it.type) : typeof it;
-            types2[t] = (types2[t] || 0) + 1;
+            types[t] = (types[t] || 0) + 1;
             const o = responseOutputText(it);
             if (typeof o === "string" && o.length >= threshold)
               big++;
@@ -9853,7 +9204,7 @@ function headroomExtension(pi) {
           }
           detail = {
             items: payload.input.length,
-            types: types2,
+            types,
             itemsOverThreshold: big,
             batchCandidates: batchItems,
             batchCandidateChars: batchChars,
@@ -9885,12 +9236,12 @@ function headroomExtension(pi) {
     let archiveFallback;
     try {
       if (Array.isArray(payload.input)) {
-        const ready2 = await ensureProxy(ctx, state, 1000, host);
+        const ready = await ensureProxy(ctx, state, 1000, host);
         const nextPayload = await compressResponsesPayload(payload, ctx, state, {
-          providerReady: ready2,
+          providerReady: ready,
           debugSeq: seq
         });
-        if (ready2)
+        if (ready)
           refreshStatsAndRender(ctx, state, host);
         else
           renderWidget(ctx, state, host);
@@ -9898,32 +9249,32 @@ function headroomExtension(pi) {
       }
       const provider = effectiveProviderFormat(payload, ctx);
       if (provider === "anthropic") {
-        const workingPayload2 = await applyMessageSessionArchive(payload, provider, state, ctx);
-        const archived2 = workingPayload2 !== payload;
-        if (archived2)
-          archiveFallback = workingPayload2;
-        const candidate = providerPayloadHasCompressionCandidate(workingPayload2);
+        const workingPayload = await applyMessageSessionArchive(payload, provider, state, ctx);
+        const archived = workingPayload !== payload;
+        if (archived)
+          archiveFallback = workingPayload;
+        const candidate = providerPayloadHasCompressionCandidate(workingPayload);
         if (!candidate) {
           debugSizingDiagnostic(state, seq, {
-            ...anthropicCompressionDiagnostic(workingPayload2, ctx),
+            ...anthropicCompressionDiagnostic(workingPayload, ctx),
             candidate,
             proxyReady: null
           });
           state.lastError = "";
           renderWidget(ctx, state, host);
-          return hr(archived2 ? workingPayload2 : undefined);
+          return hr(archived ? workingPayload : undefined);
         }
-        const ready2 = await ensureProxy(ctx, state, 1000, host);
+        const ready = await ensureProxy(ctx, state, 1000, host);
         debugSizingDiagnostic(state, seq, {
-          ...anthropicCompressionDiagnostic(workingPayload2, ctx),
+          ...anthropicCompressionDiagnostic(workingPayload, ctx),
           candidate,
-          proxyReady: ready2
+          proxyReady: ready
         });
-        if (!ready2) {
+        if (!ready) {
           renderWidget(ctx, state, host);
-          return hr(archived2 ? workingPayload2 : undefined);
+          return hr(archived ? workingPayload : undefined);
         }
-        const nextPayload = await compressAnthropicPayload(workingPayload2, ctx, state);
+        const nextPayload = await compressAnthropicPayload(workingPayload, ctx, state);
         state.lastError = "";
         refreshStatsAndRender(ctx, state, host);
         return hr(nextPayload);
@@ -10033,17 +9384,17 @@ function headroomExtension(pi) {
       }
     });
   } else if (host === "pi") {
-    Promise.resolve().then(() => (init_build(), exports_build)).then((typeboxModule) => {
-      const Type2 = typeboxModule.Type;
-      if (!Type2)
+    Promise.resolve().then(() => (init_build(), {})).then((typeboxModule) => {
+      const Type = exports_typebox;
+      if (!Type)
         return;
       toolRegistrar.registerTool({
         name: RETRIEVE_TOOL,
         label: "Headroom Retrieve",
         description: RETRIEVE_DESCRIPTION,
-        parameters: Type2.Object({
-          hash: Type2.String({ description: "Hash key from a Headroom compression marker." }),
-          query: Type2.Optional(Type2.String({ description: "Optional search query to filter original content." }))
+        parameters: Type.Object({
+          hash: Type.String({ description: "Hash key from a Headroom compression marker." }),
+          query: Type.Optional(Type.String({ description: "Optional search query to filter original content." }))
         }),
         async execute(_toolCallId, params, signal, _onUpdate, ctx) {
           await ensureProxy(ctx, state, 5000, host);
@@ -10081,8 +9432,8 @@ function headroomExtension(pi) {
         name: COMPRESS_TOOL,
         label: "Headroom Compress",
         description: "Compress large content to save context window space. The original is stored by Headroom and can be retrieved later with headroom_retrieve when a hash is present.",
-        parameters: Type2.Object({
-          content: Type2.String({
+        parameters: Type.Object({
+          content: Type.String({
             description: "Text, JSON, logs, code, or search results to compress."
           })
         }),
@@ -10103,7 +9454,7 @@ function headroomExtension(pi) {
         name: STATS_TOOL,
         label: "Headroom Stats",
         description: "Show Headroom compression statistics for this session and proxy.",
-        parameters: Type2.Object({}),
+        parameters: Type.Object({}),
         async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
           await ensureProxy(ctx, state, 3000, host);
           await fetchStats(state, true);
@@ -10122,18 +9473,18 @@ function headroomExtension(pi) {
     getArgumentCompletions: (prefix) => completeHeadroomCommand(prefix, HEADROOM_TEST_SURFACES),
     handler: async (args, ctx) => {
       const parts = String(args || "").trim().split(/\s+/);
-      const action2 = parts[0]?.toLowerCase() || "stats";
+      const action = parts[0]?.toLowerCase() || "stats";
       const sub = parts.slice(1).join(" ");
-      if (action2 === "on") {
+      if (action === "on") {
         state.enabled = true;
         await ensureProxy(ctx, state, 25000, host);
         ctx.ui.notify("Headroom enabled.", "info");
-      } else if (action2 === "off") {
+      } else if (action === "off") {
         state.enabled = false;
         ctx.ui.notify("Headroom disabled for this session.", "info");
-      } else if (action2 === "compact") {
+      } else if (action === "compact") {
         await runHeadroomCompaction(ctx, state);
-      } else if (action2 === "clear") {
+      } else if (action === "clear") {
         if (sub !== "session confirm") {
           ctx.ui.notify("This deletes the current session's Headroom CCR archives and archive counters. Run /headroom clear session confirm to continue.", "warn");
         } else {
@@ -10156,7 +9507,7 @@ function headroomExtension(pi) {
             }
           }
         }
-      } else if (action2 === "test") {
+      } else if (action === "test") {
         const created = await createHeadroomTranscriptFixture(ctx, state, sub);
         if (created === undefined) {
           ctx.ui.notify(`Unknown Headroom test "${sub || "(empty)"}". Available: ${HEADROOM_TEST_SURFACES.join(", ")}.`, "warn");
@@ -10165,7 +9516,7 @@ function headroomExtension(pi) {
         } else if (!created) {
           ctx.ui.notify("Headroom test requires an interactive OMP session.", "warn");
         }
-      } else if (action2 === "service") {
+      } else if (action === "service") {
         const serviceAction = parseServiceAction(sub);
         if (!serviceAction) {
           ctx.ui.notify(`${serviceActionUsage()}
@@ -10173,7 +9524,7 @@ The service command only manages ${SYSTEMD_UNIT}.`, "warn");
         } else {
           await manageHeadroomUserService(serviceAction, ctx, state, host);
         }
-      } else if (action2 === "version") {
+      } else if (action === "version") {
         const proxyVer = state.version || "?";
         const proxyReady = state.proxyReady ? "ready" : state.proxyStarting ? "starting" : "offline";
         const extPath = import.meta.path || join5(PACKAGE_ROOT, "src", "index.ts");
@@ -10191,7 +9542,7 @@ The service command only manages ${SYSTEMD_UNIT}.`, "warn");
   logs: ${LOGS_DIR}/
   autoupdate: ${AUTOUPDATE ? "on" : "off"}
   provider archive: ${SESSION_ARCHIVE_ENABLED ? "on" : "off"}`, "info");
-      } else if (action2 === "config") {
+      } else if (action === "config") {
         const rows = HEADROOM_SETTINGS.map((setting) => {
           const value = effectiveSettingValue(setting);
           const rendered = typeof value === "boolean" ? value ? "on" : "off" : String(value);
@@ -10205,7 +9556,7 @@ ${rows.join(`
 `)}
   proxy: ${state.version || "?"} ${state.proxyReady ? "ready" : "offline"}
 Change with: /headroom set <key> <value>`, "info");
-      } else if (action2 === "set") {
+      } else if (action === "set") {
         const match = sub.match(/^(\S+)(?:\s+([\s\S]+))?$/);
         const key = match?.[1] ?? "";
         const rawValue = match?.[2] ?? "";
@@ -10227,17 +9578,17 @@ Known keys: ${known}`, "warn");
             ctx.ui.notify(`Headroom set failed: ${errorMessage(error)}`, "error");
           }
         }
-      } else if (action2 === "debug") {
+      } else if (action === "debug") {
         const logFile = debugSizingLogPath(state);
         ctx.ui.notify(`Headroom debug:
   sizing: ${DEBUG_SIZING ? "ON" : "OFF"}
   log: ${logFile || "(no session ID)"}
   proxy: ${PROXY_URL}
   version: ${state.version || "?"}`, "info");
-      } else if (action2 === "start") {
+      } else if (action === "start") {
         await ensureProxy(ctx, state, 25000, host);
         ctx.ui.notify(state.proxyReady ? "Headroom proxy ready." : "Headroom proxy is still starting.", "info");
-      } else if (action2 === "stop") {
+      } else if (action === "stop") {
         if (await systemdUnitAvailable())
           await systemdCtl("stop");
         if (state.proxyProcess)
@@ -10246,13 +9597,13 @@ Known keys: ${known}`, "warn");
         state.proxyReady = false;
         state.proxyStarting = false;
         ctx.ui.notify("Headroom proxy stopped.", "info");
-      } else if (action2 === "restart") {
+      } else if (action === "restart") {
         const restarted = await restartProxy(ctx, state, host);
         ctx.ui.notify(restarted ? "Headroom proxy restarted." : state.lastError || "Headroom proxy is still starting.", restarted ? "info" : "warn");
-      } else if (action2 === "reconnect") {
+      } else if (action === "reconnect") {
         const ready = await connectWithRetry(ctx, state);
         ctx.ui.notify(ready ? "Headroom reconnected." : state.lastError || "Headroom still not ready.", ready ? "info" : "warn");
-      } else if (action2 === "update") {
+      } else if (action === "update") {
         state.lastError = "";
         state.installState = "updating";
         renderWidget(ctx, state, host);
@@ -10272,8 +9623,8 @@ Known keys: ${known}`, "warn");
           const upToDate = state.version && !isNewer(state.latest, state.version);
           ctx.ui.notify(`Headroom ${state.version || "?"}${upToDate ? " (up to date)" : ""}`, "info");
         }
-      } else if (action2 === "help" || action2 === "stats") {
-        if (action2 === "help") {
+      } else if (action === "help" || action === "stats") {
+        if (action === "help") {
           const lines = commandHelpLines();
           ctx.ui.notify(`Headroom commands:
 ${lines.join(`
@@ -10285,7 +9636,7 @@ ${lines.join(`
         }
       } else {
         const lines = commandHelpLines();
-        ctx.ui.notify(`Unknown command "${action2}". Available:
+        ctx.ui.notify(`Unknown command "${action}". Available:
 ${lines.join(`
 `)}`, "info");
       }
