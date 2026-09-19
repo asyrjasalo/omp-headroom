@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — Pi coding agent support
+## 0.1.5 — 2026-09-04
 
 ### Added
 
-- **Dual-peer support for [Pi](https://github.com/badlogic/pi) (Mario Zechner's coding agent).** The same release now plugs into both [OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi) and Pi sessions with feature parity. `package.json` advertises both `omp.extensions` and `pi.extensions` keys; `peerDependencies` adds `@earendil-works/pi-coding-agent ^0.84.0`.
+- **Dual-peer support for [Pi](https://github.com/badlogic/pi) (Mario Zechner's coding agent).** The same release now plugs into both [OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi) and Pi sessions with feature parity. `package.json` advertises both `omp.extensions` and `pi.extensions` keys.
 
 - **Pi manual tools (`headroom_compress`, `headroom_retrieve`, `headroom_stats`).** Registered via typebox schemas (Pi's `registerTool` requires `TSchema`) loaded through a dynamic import. OMP uses zod on the same factory body. Tool behavior and contract are identical across hosts.
 
@@ -25,10 +25,12 @@
 - 6 module-scope helpers gained an optional `host` parameter (`restartProxy`, `doMaintainInstall`, `maintainInstall`, `ensureProxy`, `runHeadroomCompression`, `createHeadroomTranscriptFixture`, `manageHeadroomUserService`, `reconcileProxyVersion`, `connectWithRetry`). All call sites from inside the factory pass `host`; tests are unchanged because they exercise the helpers with their default `host = "omp"` argument.
 - `src/index.ts` factory reads `host = readHost(pi)` at entry; the host tag is set by `src/pi-entry.ts` via `pi[HEADROOM_HOST] = "pi"` and the symbol re-export from `src/host.ts`. Tests pass plain stubs without the symbol → default `"omp"`, back-compat intact.
 - Project-local `.pi/settings.json` gets a `packages` filter entry that disables `git:github.com/asyrjasalo/omp-headroom` (`extensions: []`, `skills: []`, `prompts: []`, `themes: []`). Project-scope settings win over the user's global git-installed copy, so the project-local `.pi/extensions/omp-headroom.js` mirror loads alone. Tool/flag names (`headroom_*`, `--headroom`) are unchanged across hosts.
+- `peerDependencies` drops `@earendil-works/pi-coding-agent` (kept only in `devDependencies` for typechecking `src/pi-entry.ts`). The shipped `dist-pi/pi-entry.js` bundle is self-contained (`node:` builtins only), so Pi never resolves the package at runtime; and Pi's git installer runs `npm install --omit=dev`, which resolves the remaining peer range against the lockfile and installs nothing. OMP (bun) auto-installs peers, and `@oh-my-pi/pi-coding-agent` remains a peer for it.
+- Test suite is now hermetic: `tests/setup-env.mjs` (preloaded via `bunfig.toml` `[test] preload`) forces `OMP_HEADROOM_WIDGET=1`, so the 94 tests no longer read the user's live `~/.omp/agent/headroom.yml` (a `widget: false` there broke 4 widget assertions).
 
 ### Notes
 
-- The existing 94-test suite passes unchanged against the refactored factory.
+- The existing 94-test suite passes unchanged against the refactored factory (now hermetic, see above).
 - End-to-end compression in Pi additionally requires routing the LLM provider through the Headroom proxy (analogous to OMP's `headroom wrap omp`). That's a separate custom-provider extension, not part of this package.
 
 ### Added
