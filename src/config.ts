@@ -30,7 +30,15 @@ export function loadHeadroomConfig(path = HEADROOM_CONFIG_PATH): Record<string, 
   try {
     const text = existsSync(path) ? readFileSync(path, "utf8") : "";
     if (!text.trim()) return {};
-    const parsed = typeof Bun?.YAML?.parse === "function" ? Bun.YAML.parse(text) : {};
+    // shortcut: pi runs extensions under plain Node where the bare global `Bun`
+    // is undeclared; `typeof Bun?.YAML` on an undeclared base still throws
+    // ReferenceError (typeof's safe-identifier rule covers plain identifiers
+    // only). Guard the identifier itself so the parseFlatYaml fallback runs
+    // instead of the catch swallowing every yaml-only setting (widget: false).
+    const parsed =
+      typeof Bun !== "undefined" && typeof Bun.YAML?.parse === "function"
+        ? Bun.YAML.parse(text)
+        : parseFlatYaml(text);
     return (parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}) as Record<
       string,
       unknown
@@ -38,6 +46,64 @@ export function loadHeadroomConfig(path = HEADROOM_CONFIG_PATH): Record<string, 
   } catch {
     return {};
   }
+}
+
+/**
+ * Minimal YAML subset for flat scalar configs (the only shape headroom.yml
+ * uses): top-level `key: value` pairs. Comments, blanks, indented and
+ * non-scalar lines are skipped. Unquoted values keep YAML scalar typing
+ * (bool/int/float/null); quoted values stay strings.
+ */
+export function parseFlatYaml(text: string): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || line.startsWith("-")) continue;
+    if (rawLine[0] === " " || rawLine[0] === "\t") continue;
+    const sep = line.indexOf(":");
+    if (sep <= 0) continue;
+    const key = line.slice(0, sep).trim();
+    if (!/^[A-Za-z0-9_.-]+$/.test(key)) continue;
+    let value = line.slice(sep + 1).trim();
+    const commentAt = searchComment(value);
+    if (commentAt >= 0) value = value.slice(0, commentAt).trim();
+    if (value === "") continue;
+    out[key] = parseScalar(value);
+  }
+  return out;
+}
+
+// Position of an unquoted trailing `#` comment, or -1. Quoted values may
+// legitimately contain `#`, so only scan outside quotes.
+function searchComment(value: string): number {
+  let quote: string | null = null;
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i]!;
+    if (quote) {
+      if (ch === quote && value[i - 1] !== "\\") quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#" && (i === 0 || /\s/.test(value[i - 1]!))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function parseScalar(value: string): unknown {
+  if (value.length >= 2) {
+    const first = value[0]!;
+    const last = value[value.length - 1]!;
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return value.slice(1, -1);
+    }
+  }
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null" || value === "~") return null;
+  if (/^[+-]?\d+$/.test(value)) return Number(value);
+  if (/^[+-]?(\d+\.\d*|\.\d+)([eE][+-]?\d+)?$/.test(value)) return Number(value);
+  return value;
 }
 
 export const _cfg = loadHeadroomConfig();

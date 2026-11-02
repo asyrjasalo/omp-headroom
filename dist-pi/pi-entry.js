@@ -6054,11 +6054,70 @@ function loadHeadroomConfig(path = HEADROOM_CONFIG_PATH) {
     const text = existsSync(path) ? readFileSync(path, "utf8") : "";
     if (!text.trim())
       return {};
-    const parsed = typeof Bun?.YAML?.parse === "function" ? Bun.YAML.parse(text) : {};
+    const parsed = typeof Bun !== "undefined" && typeof Bun.YAML?.parse === "function" ? Bun.YAML.parse(text) : parseFlatYaml(text);
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
+}
+function parseFlatYaml(text) {
+  const out = {};
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || line.startsWith("-"))
+      continue;
+    if (rawLine[0] === " " || rawLine[0] === "\t")
+      continue;
+    const sep = line.indexOf(":");
+    if (sep <= 0)
+      continue;
+    const key = line.slice(0, sep).trim();
+    if (!/^[A-Za-z0-9_.-]+$/.test(key))
+      continue;
+    let value = line.slice(sep + 1).trim();
+    const commentAt = searchComment(value);
+    if (commentAt >= 0)
+      value = value.slice(0, commentAt).trim();
+    if (value === "")
+      continue;
+    out[key] = parseScalar(value);
+  }
+  return out;
+}
+function searchComment(value) {
+  let quote = null;
+  for (let i = 0;i < value.length; i++) {
+    const ch = value[i];
+    if (quote) {
+      if (ch === quote && value[i - 1] !== "\\")
+        quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#" && (i === 0 || /\s/.test(value[i - 1]))) {
+      return i;
+    }
+  }
+  return -1;
+}
+function parseScalar(value) {
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if (first === '"' && last === '"' || first === "'" && last === "'") {
+      return value.slice(1, -1);
+    }
+  }
+  if (value === "true")
+    return true;
+  if (value === "false")
+    return false;
+  if (value === "null" || value === "~")
+    return null;
+  if (/^[+-]?\d+$/.test(value))
+    return Number(value);
+  if (/^[+-]?(\d+\.\d*|\.\d+)([eE][+-]?\d+)?$/.test(value))
+    return Number(value);
+  return value;
 }
 var _cfg = loadHeadroomConfig();
 function cfgStr(yamlKey, envKey, def) {
