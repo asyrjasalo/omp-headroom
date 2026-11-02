@@ -1,8 +1,10 @@
 {
-  "defaultModel": "MiniMax-M3",
-  "defaultProvider": "occam/minimax",
+  "defaultModel": "glm-5.3",
+  "defaultProvider": "occam/zai",
+  "defaultThinkingLevel": "minimal",
   "enabledModels": [
-    "*minimax-M3*"
+    "*glm-5.2*",
+    "*glm-5.3*"
   ],
   "packages": [
     {
